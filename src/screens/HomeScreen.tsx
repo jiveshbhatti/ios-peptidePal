@@ -89,6 +89,21 @@ export default function HomeScreen() {
     });
   };
 
+  // Find dose log ID for a specific peptide, date, and time
+  const findDoseLogId = (peptideId: string, time: 'AM' | 'PM'): string | null => {
+    const peptide = peptides.find(p => p.id === peptideId);
+    if (!peptide || !peptide.doseLogs) return null;
+
+    const doseLog = peptide.doseLogs.find(log => {
+      // Handle both date and loggedAt field names for backward compatibility
+      const logDate = log.date || log.loggedAt;
+      return logDate && dateUtils.isSameDay(new Date(logDate), selectedDate) && 
+        log.timeOfDay === time;
+    });
+
+    return doseLog ? doseLog.id : null;
+  };
+
   // Get dates with scheduled peptides for calendar markers
   const getMarkedDates = (): Date[] => {
     const marked: Date[] = [];
