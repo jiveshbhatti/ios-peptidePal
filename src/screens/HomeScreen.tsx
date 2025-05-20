@@ -169,6 +169,48 @@ export default function HomeScreen() {
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Dose logged successfully!');
 
+  // Handle reverting a logged dose
+  const handleRevertDose = async (peptideId: string, time: 'AM' | 'PM') => {
+    // Find the dose log ID
+    const doseLogId = findDoseLogId(peptideId, time);
+    if (!doseLogId) {
+      Alert.alert('Error', 'Could not find the dose log to revert');
+      return;
+    }
+
+    // Ask for confirmation
+    Alert.alert(
+      'Revert Dose Log',
+      'Are you sure you want to remove this logged dose?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Revert',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await peptideService.removeDoseLog(peptideId, doseLogId);
+              
+              // Show success message
+              setSuccessMessage('Dose log successfully reverted');
+              setShowSuccessAnimation(true);
+              
+              // Refresh data
+              await refreshData();
+            } catch (error) {
+              console.error('Error reverting dose log:', error);
+              Alert.alert('Error', 'Failed to revert dose log');
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
+
   const handleLogDose = async (peptideId: string, time: 'AM' | 'PM') => {
     // Check if dose is already logged for this time
     if (isDoseLogged(peptideId, time)) {
@@ -248,6 +290,7 @@ export default function HomeScreen() {
               scheduleTime={time}
               isLogged={isDoseLogged(peptide.id, time)}
               onLog={() => handleLogDose(peptide.id, time)}
+              onRevert={() => handleRevertDose(peptide.id, time)}
               onPress={() => handlePeptidePress(peptide.id)}
             />
           ))
