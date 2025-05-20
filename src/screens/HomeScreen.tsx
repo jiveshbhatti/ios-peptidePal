@@ -6,6 +6,7 @@ import {
   ScrollView,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
@@ -16,6 +17,7 @@ import * as dateUtils from '@/utils/date';
 import { peptideService } from '@/services/peptide.service';
 import DoseLogModal from '@/components/DoseLogModal';
 import BottomSheet from '@/components/ui/BottomSheet';
+import SuccessAnimation from '@/components/ui/SuccessAnimation';
 
 export default function HomeScreen() {
   const { peptides, loading, refreshData } = useData();
@@ -27,6 +29,11 @@ export default function HomeScreen() {
     const dayOfWeek = selectedDate.getDay();
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
     const currentDay = dayNames[dayOfWeek];
+    
+    console.log(`Selected date: ${selectedDate.toISOString()}, day of week: ${dayOfWeek}, current day: ${currentDay}`);
+
+    // Debug: Log all peptides to see what's available before filtering
+    // All debug code removed
 
     const scheduled: Array<{ peptide: Peptide; time: 'AM' | 'PM' }> = [];
 
@@ -36,6 +43,7 @@ export default function HomeScreen() {
       // Check if peptide has an active vial with remaining doses
       const activeVial = peptide.vials?.find(v => v.isActive);
       if (!activeVial || activeVial.remainingAmountUnits <= 0) {
+        console.log(`Skipping ${peptide.name}: activeVial=${!!activeVial}, remainingDoses=${activeVial?.remainingAmountUnits}`);
         return; // Skip peptides with no active vial or empty vials
       }
 
@@ -45,9 +53,18 @@ export default function HomeScreen() {
       let isScheduledToday = false;
       if (frequency === 'daily') {
         isScheduledToday = true;
-      } else if (frequency === 'specific_days' && daysOfWeek?.includes(currentDay)) {
-        isScheduledToday = true;
+      } else if (frequency === 'specific_days' && daysOfWeek) {
+        // Handle both string day names and numeric day indexes
+        if (typeof daysOfWeek[0] === 'number') {
+          // If daysOfWeek contains numbers (0-6), compare with the numeric day index
+          isScheduledToday = daysOfWeek.includes(dayOfWeek);
+        } else {
+          // If daysOfWeek contains strings ('monday', etc.), compare with the day name
+          isScheduledToday = daysOfWeek.includes(currentDay);
+        }
       }
+      
+      console.log(`Peptide ${peptide.name}: frequency=${frequency}, isScheduledToday=${isScheduledToday}, daysOfWeek=${JSON.stringify(daysOfWeek)}, currentDay=${currentDay}, dayOfWeek=${dayOfWeek}`);
 
       if (isScheduledToday && times) {
         times.forEach(time => {
@@ -64,10 +81,12 @@ export default function HomeScreen() {
     const peptide = peptides.find(p => p.id === peptideId);
     if (!peptide || !peptide.doseLogs) return false;
 
-    return peptide.doseLogs.some(log => 
-      dateUtils.isSameDay(new Date(log.loggedAt), selectedDate) &&
-      log.timeOfDay === time
-    );
+    return peptide.doseLogs.some(log => {
+      // Handle both date and loggedAt field names for backward compatibility
+      const logDate = log.date || log.loggedAt;
+      return logDate && dateUtils.isSameDay(new Date(logDate), selectedDate) && 
+        log.timeOfDay === time;
+    });
   };
 
   // Get dates with scheduled peptides for calendar markers
@@ -108,8 +127,15 @@ export default function HomeScreen() {
       let isScheduledToday = false;
       if (frequency === 'daily') {
         isScheduledToday = true;
-      } else if (frequency === 'specific_days' && daysOfWeek?.includes(currentDay)) {
-        isScheduledToday = true;
+      } else if (frequency === 'specific_days' && daysOfWeek) {
+        // Handle both string day names and numeric day indexes
+        if (typeof daysOfWeek[0] === 'number') {
+          // If daysOfWeek contains numbers (0-6), compare with the numeric day index
+          isScheduledToday = daysOfWeek.includes(dayOfWeek);
+        } else {
+          // If daysOfWeek contains strings ('monday', etc.), compare with the day name
+          isScheduledToday = daysOfWeek.includes(currentDay);
+        }
       }
 
       if (isScheduledToday && times) {
@@ -125,12 +151,29 @@ export default function HomeScreen() {
   const [selectedPeptide, setSelectedPeptide] = useState<Peptide | null>(null);
   const [selectedTime, setSelectedTime] = useState<'AM' | 'PM'>('AM');
   const [showDoseModal, setShowDoseModal] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('Dose logged successfully!');
 
   const handleLogDose = async (peptideId: string, time: 'AM' | 'PM') => {
+    // Check if dose is already logged for this time
+    if (isDoseLogged(peptideId, time)) {
+      // Show a message that dose is already logged
+      Alert.alert(
+        "Already Logged",
+        "You've already logged this dose for today.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+    
     const peptide = peptides.find(p => p.id === peptideId);
     if (!peptide) return;
     
-    setSelectedPeptide(peptide);
+    // Make sure we have the latest peptide data before showing the modal
+    const refreshedPeptides = await peptideService.getPeptides();
+    const refreshedPeptide = refreshedPeptides.find(p => p.id === peptideId);
+    
+    setSelectedPeptide(refreshedPeptide || peptide);
     setSelectedTime(time);
     setShowDoseModal(true);
   };
@@ -208,14 +251,26 @@ export default function HomeScreen() {
           await peptideService.addDoseLog(selectedPeptide.id, {
             amount: dose.amount,
             unit: dose.unit,
-            loggedAt: selectedDate.toISOString(),
+            date: selectedDate.toISOString(), // Use the date field from the schema
             timeOfDay: selectedTime,
             notes: dose.notes,
           });
           
-          await refreshData();
+          // Close the modal and show success animation
           setShowDoseModal(false);
+          setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
+          setShowSuccessAnimation(true);
+          
+          // Refresh data in background
+          await refreshData();
         }}
+      />
+
+      {/* Success Animation */}
+      <SuccessAnimation
+        visible={showSuccessAnimation}
+        message={successMessage}
+        onComplete={() => setShowSuccessAnimation(false)}
       />
     </ScrollView>
   );
@@ -236,8 +291,8 @@ const styles = StyleSheet.create({
     paddingBottom: theme.spacing.xl,
   },
   scheduleTitle: {
-    fontSize: 28,
-    fontWeight: '700',
+    fontSize: 36,
+    fontWeight: 'bold',
     color: theme.colors.gray[800],
     marginHorizontal: theme.spacing.md,
     marginBottom: theme.spacing.lg,

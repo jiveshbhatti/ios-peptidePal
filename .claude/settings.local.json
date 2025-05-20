@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx expo start:*)",
+      "Bash(npm install:*)",
+      "Bash(grep:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(xcrun simctl list:*)",
+      "Bash(xcode-select:*)",
+      "Bash(xcrun simctl create:*)",
+      "Bash(open:*)",
+      "Bash(xcodebuild:*)",
+      "Bash(npx expo run:ios:*)",
+      "Bash(git clone:*)",
+      "Bash(node:*)",
+      "Bash(DEBUG=*)",
+      "Bash(npm run ios:*)",
+      "Bash(npm start)",
+      "Bash(claude mcp add ios-simulator --command npx --args \"-y,ios-simulator-mcp\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(npm run:*)",
+      "Bash(cat:*)",
+      "Bash(mcp__ios-simulator__get_booted_sim_id:*)",
+      "Bash(claude mcp:*)",
+      "Bash(env)",
+      "mcp__ios-simulator__get_booted_sim_id",
+      "mcp__ios-simulator__screenshot",
+      "mcp__ios-simulator__ui_tap",
+      "mcp__ios-simulator__ui_describe_all",
+      "Bash(pkill:*)",
+      "Bash(xcrun simctl shutdown:*)",
+      "Bash(xcrun simctl boot:*)",
+      "WebFetch(domain:studio--peptidepal.us-central1.hosted.app)",
+      "Bash(xcrun simctl launch:*)",
+      "Bash(xcrun simctl terminate:*)",
+      "Bash(adb logcat:*)",
+      "Bash(chmod:*)"
+    ],
+    "deny": []
+  }
+}

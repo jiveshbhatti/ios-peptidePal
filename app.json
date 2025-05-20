@@ -36,8 +36,12 @@
     },
     "plugins": [
       "expo-secure-store",
-      "expo-image-picker",
-      "expo-calendar"
+      ["expo-image-picker", {
+        "photosPermission": "PeptidePal needs access to your photo library to save peptide images."
+      }],
+      ["expo-calendar", {
+        "calendarPermission": "PeptidePal needs access to your calendar to help schedule peptide doses."
+      }]
     ],
     "extra": {
       "eas": {
