@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { theme } from '@/constants/theme';
 import { supabase } from '@/services/supabase';
-import { config } from '@/config';
+import { generateUUID } from '@/utils/uuid';
 
 /**
  * A tool for testing column name issues in the database
@@ -19,14 +19,14 @@ export default function ColumnTestingTool() {
     const testResults = [];
     
     try {
-      // Create a test peptide
-      const testId = `test-${Date.now()}`;
+      // Create a test peptide with proper UUID format
+      const testId = generateUUID();
       console.log(`Creating test peptide with ID: ${testId}`);
       
       const testPeptide = {
         id: testId,
         name: 'COLUMN-TEST-TOOL',
-        vials: [{id: 'test-vial', isActive: true, remainingAmountUnits: 10}]
+        vials: [{id: generateUUID(), isActive: true, remainingAmountUnits: 10}]
       };
       
       // Insert the test peptide
@@ -219,7 +219,7 @@ export default function ColumnTestingTool() {
       
       // Test 7: Insert with just lowercase
       try {
-        const newId = `test-l-${Date.now()}`;
+        const newId = generateUUID();
         const { error } = await supabase
           .from('peptides')
           .insert({ 
@@ -247,7 +247,7 @@ export default function ColumnTestingTool() {
       
       // Test 8: Insert with just camelCase
       try {
-        const newId = `test-c-${Date.now()}`;
+        const newId = generateUUID();
         const { error } = await supabase
           .from('peptides')
           .insert({ 
@@ -302,7 +302,7 @@ export default function ColumnTestingTool() {
       <View style={styles.header}>
         <Text style={styles.title}>Database Column Testing</Text>
         <Text style={styles.subtitle}>
-          Current database: {config.supabase.label}
+          Database: Supabase
         </Text>
       </View>
       

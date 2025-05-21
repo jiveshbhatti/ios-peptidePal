@@ -147,16 +147,29 @@ export default function InventoryPeptideCard({
                 />
               </View>
               <Text style={styles.progressText}>
-                {peptide.batch_number && peptide.batch_number.startsWith('USAGE:') ? (
-                  (() => {
+                {(() => {
+                  // Always calculate total doses and show dose count if we have the necessary data
+                  if (peptide.concentration_per_vial_mcg && peptide.typical_dose_mcg) {
                     const totalDoses = Math.floor(peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg);
-                    const usedDoses = parseInt(peptide.batch_number.split('USAGE:')[1], 10);
-                    const remainingDoses = Math.max(0, totalDoses - usedDoses);
-                    return `${usedDoses} doses used / ${remainingDoses} remaining`;
-                  })()
-                ) : (
-                  remainingPercentage < 25 ? 'Low remaining in active vial' : 'Active vial in use'
-                )}
+                    
+                    // If we have explicit usage data, use it
+                    if (peptide.batch_number && peptide.batch_number.startsWith('USAGE:')) {
+                      const usedDoses = parseInt(peptide.batch_number.split('USAGE:')[1], 10);
+                      const remainingDoses = Math.max(0, totalDoses - usedDoses);
+                      return `${usedDoses} doses used / ${remainingDoses} remaining`;
+                    } 
+                    // Otherwise, estimate based on percentage
+                    else {
+                      const estimatedUsedDoses = Math.floor(totalDoses * (1 - remainingPercentage / 100));
+                      const estimatedRemainingDoses = Math.max(0, totalDoses - estimatedUsedDoses);
+                      return `~${estimatedUsedDoses} doses used / ${estimatedRemainingDoses} remaining`;
+                    }
+                  } 
+                  // Fallback to original message if we can't calculate
+                  else {
+                    return remainingPercentage < 25 ? 'Low remaining in active vial' : 'Active vial in use';
+                  }
+                })()}
               </Text>
             </View>
           )}

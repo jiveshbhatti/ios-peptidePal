@@ -1,76 +1,54 @@
-const puppeteer = require('puppeteer');
+const { exec } = require('child_process');
+const fs = require('fs');
+const path = require('path');
 
-async function testExpoApp() {
-  try {
-    console.log('Launching browser...');
-    const browser = await puppeteer.launch({ 
-      headless: false,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+// Take a screenshot of the current state
+const takeScreenshot = (filename) => {
+  return new Promise((resolve, reject) => {
+    const command = `xcrun simctl io 7B956034-A72F-42F7-A74A-42C44308CE07 screenshot ${filename}`;
+    exec(command, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`Error taking screenshot: ${error.message}`);
+        reject(error);
+        return;
+      }
+      if (stderr) {
+        console.error(`Screenshot stderr: ${stderr}`);
+      }
+      console.log(`Screenshot saved to ${filename}`);
+      resolve(stdout);
     });
-    console.log('Browser launched');
-    
-    const page = await browser.newPage();
-    
-    // Capture console messages
-    page.on('console', msg => {
-      console.log(`Console [${msg.type()}]: ${msg.text()}`);
-    });
-    
-    // Capture network errors
-    page.on('pageerror', error => {
-      console.log(`Page error: ${error.message}`);
-    });
-    
-    // Monitor network requests
-    page.on('request', request => {
-      console.log(`Request: ${request.url()}`);
-    });
-    
-    page.on('requestfailed', request => {
-      console.log(`Request failed: ${request.url()}: ${request.failure().errorText}`);
-    });
-    
-    console.log('Going to Expo page...');
-    await page.goto('http://localhost:8081', { waitUntil: 'networkidle2', timeout: 30000 });
-    console.log('Loaded Expo page');
-    
-    // Take screenshot of the main page
-    await page.screenshot({ path: 'expo-home-new.png', fullPage: true });
-    console.log('Screenshot saved as expo-home-new.png');
-    
-    // Wait for 5 seconds to allow any content to load
-    await new Promise(resolve => setTimeout(resolve, 5000));
-    
-    // Try to find any React error boundary message
-    const errorBoundary = await page.evaluate(() => {
-      const errorElements = Array.from(document.querySelectorAll('pre, div')).filter(el => {
-        return el.textContent && el.textContent.includes('Error');
-      });
-      return errorElements.map(el => el.textContent);
-    });
-    
-    if (errorBoundary.length > 0) {
-      console.log('Found error messages in UI:');
-      errorBoundary.forEach((error, i) => console.log(`Error ${i+1}:`, error));
-    } else {
-      console.log('No error messages found in UI');
+  });
+};
+
+// Main test sequence
+const runTest = async () => {
+  console.log('Starting Expo test...');
+  
+  // Launch Expo Go
+  console.log('Launching Expo Go...');
+  exec('xcrun simctl launch 7B956034-A72F-42F7-A74A-42C44308CE07 host.exp.Exponent', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error launching Expo Go: ${error.message}`);
+      return;
     }
-    
-    // Evaluate if there are any React elements rendered
-    const reactComponents = await page.evaluate(() => {
-      // Look for elements with data-reactroot or similar
-      const reactElements = document.querySelectorAll('[data-reactroot], [data-reactid], [class*="react"]');
-      return reactElements.length;
-    });
-    
-    console.log(`Found ${reactComponents} potential React elements`);
-    
-    await browser.close();
-    console.log('Browser closed');
-    
-  } catch (error) {
-    console.error('Error running test:', error);
-  }
-}
+    console.log('Expo Go launched');
+  });
+  
+  // Wait for app to start
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  
+  // Take a screenshot of the home screen
+  await takeScreenshot('expo-home.png');
+  
+  // Wait a bit more for any loading
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  
+  // Take another screenshot to see if anything changed
+  await takeScreenshot('expo-home-after-wait.png');
+  
+  console.log('Test completed');
+};
 
-testExpoApp();
+// Run the test
+runTest().catch(console.error);

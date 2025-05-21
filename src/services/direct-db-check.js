@@ -1,6 +1,7 @@
 // Direct database check script to include in the production app bundle
 // This will help us diagnose column issues
 import { supabase } from './supabase';
+import { generateUUID } from '@/utils/uuid';
 
 /**
  * This function attempts to query both column name variants
@@ -11,12 +12,12 @@ export async function checkDbColumnNames() {
   console.log("🔍 Database URL:", supabase.supabaseUrl);
   
   try {
-    // Create a test peptide to check which column names work
-    const testId = 'test-' + Date.now();
+    // Create a test peptide to check which column names work using proper UUID format
+    const testId = generateUUID();
     const testPeptide = {
       id: testId,
       name: 'TEST-COLUMN-CHECK',
-      vials: [{ id: 'test-vial', isActive: true, remainingAmountUnits: 10 }]
+      vials: [{ id: generateUUID(), isActive: true, remainingAmountUnits: 10 }]
     };
     
     // Insert the test peptide

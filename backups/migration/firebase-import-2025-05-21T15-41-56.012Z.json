@@ -1,0 +1,655 @@
+{
+  "peptides": {
+    "84160dbf-1d85-41e0-a312-24895c1d6672": {
+      "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "name": "Tesamorelin",
+      "strength": "5000mcg total",
+      "dosageUnit": "mcg",
+      "typicalDosageUnits": 1000,
+      "schedule": {
+        "times": [
+          "AM"
+        ],
+        "frequency": "daily"
+      },
+      "notes": " 40.0 units = 1 mg",
+      "dataAiHint": "",
+      "imageUrl": "",
+      "startDate": {
+        "seconds": 1747267200,
+        "nanoseconds": 0
+      },
+      "createdAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "updatedAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "vials": [
+        {
+          "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+          "name": "Vial from batch N/A (Inv ID: 84160dbf)",
+          "notes": "Activated from inventory. Original stock: 2 vials. (Vial depleted on 2025-05-19)",
+          "isActive": false,
+          "dateAdded": "2025-05-14",
+          "expirationDate": {
+            "seconds": 1749600000,
+            "nanoseconds": 0
+          },
+          "initialAmountUnits": 5,
+          "remainingAmountUnits": 0,
+          "reconstitutionBacWaterMl": 2,
+          "reconstitutionDate": {
+            "seconds": 1747180800,
+            "nanoseconds": 0
+          }
+        }
+      ],
+      "doseLogs": [
+        {
+          "id": "ad754360-14dc-4026-ad83-5c1047182eaf",
+          "dosage": 1000,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747320449,
+            "nanoseconds": 926000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672"
+        },
+        {
+          "id": "00223ecb-bb59-4d2c-bf91-2d2e41b68b4c",
+          "dosage": 1000,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747403999,
+            "nanoseconds": 947000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672"
+        },
+        {
+          "id": "0eba30bb-57bb-4f88-ad19-9fd7f8ef7df5",
+          "dosage": 1000,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747541655,
+            "nanoseconds": 453000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672"
+        },
+        {
+          "id": "e62dba58-1dab-418e-bb0d-f5362011b7a1",
+          "dosage": 1000,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747581346,
+            "nanoseconds": 645000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672"
+        },
+        {
+          "id": "5bb3ee26-2857-4fc7-8fff-ca6d250f4690",
+          "dosage": 1000,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747668814,
+            "nanoseconds": 750000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672"
+        }
+      ]
+    },
+    "b6b9fde1-8bbf-4f91-93b2-5492049184b1": {
+      "id": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+      "name": "Retatrutide",
+      "strength": "6000mcg total",
+      "dosageUnit": "mg",
+      "typicalDosageUnits": 1,
+      "schedule": {
+        "times": [
+          "AM"
+        ],
+        "frequency": "specific_days",
+        "daysOfWeek": [
+          1,
+          4
+        ]
+      },
+      "notes": "50 units = 1 mg",
+      "dataAiHint": "Retatrutide ",
+      "imageUrl": "https://picsum.photos/200/200?random=362",
+      "startDate": {
+        "seconds": 1747267200,
+        "nanoseconds": 0
+      },
+      "createdAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "updatedAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "vials": [
+        {
+          "id": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+          "name": "Vial from batch N/A (Inv ID: b6b9fde1)",
+          "notes": "Activated from inventory. Original stock: 10 vials.",
+          "isActive": true,
+          "dateAdded": "2025-05-13",
+          "expirationDate": {
+            "seconds": 1749513600,
+            "nanoseconds": 0
+          },
+          "initialAmountUnits": 6000,
+          "remainingAmountUnits": 5998,
+          "reconstitutionBacWaterMl": 3,
+          "reconstitutionDate": {
+            "seconds": 1747094400,
+            "nanoseconds": 0
+          }
+        }
+      ],
+      "doseLogs": [
+        {
+          "id": "d4d14551-ca47-46b8-98d9-30027b339c30",
+          "dosage": 1,
+          "unit": "mg",
+          "date": {
+            "seconds": 1747320449,
+            "nanoseconds": 926000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "b6b9fde1-8bbf-4f91-93b2-5492049184b1"
+        },
+        {
+          "id": "29aa3536-c847-4120-83f3-2f97c9d35444",
+          "dosage": 1,
+          "unit": "mg",
+          "date": {
+            "seconds": 1747668814,
+            "nanoseconds": 750000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "b6b9fde1-8bbf-4f91-93b2-5492049184b1"
+        }
+      ]
+    },
+    "c4dce250-d7cf-4c05-a26d-3db101c78167": {
+      "id": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+      "name": "NAD+",
+      "strength": "25mg twice a week",
+      "dosageUnit": "mcg",
+      "typicalDosageUnits": 25000,
+      "schedule": {
+        "times": [
+          "AM"
+        ],
+        "frequency": "specific_days",
+        "daysOfWeek": [
+          2,
+          5
+        ]
+      },
+      "notes": "15units = 25mg\n\ntwice a week",
+      "dataAiHint": "NAD+",
+      "imageUrl": "",
+      "startDate": {
+        "seconds": 1747267200,
+        "nanoseconds": 0
+      },
+      "createdAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "updatedAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "vials": [
+        {
+          "id": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+          "name": "Vial from batch N/A (Inv ID: c4dce250)",
+          "notes": "Activated from inventory. Original stock: 12 vials.",
+          "isActive": true,
+          "dateAdded": "2025-05-15",
+          "expirationDate": {
+            "seconds": 1749686400,
+            "nanoseconds": 0
+          },
+          "initialAmountUnits": 20,
+          "remainingAmountUnits": 17,
+          "reconstitutionBacWaterMl": 3,
+          "reconstitutionDate": {
+            "seconds": 1747267200,
+            "nanoseconds": 0
+          }
+        }
+      ],
+      "doseLogs": [
+        {
+          "id": "366390bc-1b4b-4f48-b49d-4c41a61aa61d",
+          "dosage": 25,
+          "unit": "mg",
+          "date": {
+            "seconds": 1747378800,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c4dce250-d7cf-4c05-a26d-3db101c78167"
+        },
+        {
+          "id": "881a1fa0-7559-4fb6-b0f9-59cd6015096e",
+          "dosage": 25000,
+          "unit": "mg",
+          "date": {
+            "seconds": 1747581346,
+            "nanoseconds": 645000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c4dce250-d7cf-4c05-a26d-3db101c78167"
+        },
+        {
+          "id": "bab39369-3b70-4d1d-b1f1-9dcfc85f1960",
+          "dosage": 25,
+          "unit": "mg",
+          "date": {
+            "seconds": 1747724400,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c4dce250-d7cf-4c05-a26d-3db101c78167"
+        }
+      ]
+    },
+    "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef": {
+      "id": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+      "name": "Glow",
+      "strength": "10000mcg total",
+      "dosageUnit": "mcg",
+      "typicalDosageUnits": 300,
+      "schedule": {
+        "times": [
+          "AM",
+          "PM"
+        ],
+        "frequency": "daily"
+      },
+      "notes": "9 units = 300 mcg",
+      "dataAiHint": "Glow peptide",
+      "imageUrl": "https://picsum.photos/200/200?random=421&hint=Glow%20peptide",
+      "startDate": {
+        "seconds": 1747119600,
+        "nanoseconds": 0
+      },
+      "createdAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "updatedAt": {
+        "seconds": 1747842116,
+        "nanoseconds": 12000000
+      },
+      "vials": [
+        {
+          "id": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+          "name": "Vial from batch N/A (Inv ID: c3c4391d)",
+          "notes": "Activated from inventory. Original stock: 9 vials.",
+          "isActive": true,
+          "dateAdded": "2025-05-13",
+          "expirationDate": {
+            "seconds": 1749513600,
+            "nanoseconds": 0
+          },
+          "initialAmountUnits": 33,
+          "remainingAmountUnits": 15,
+          "reconstitutionBacWaterMl": 3,
+          "reconstitutionDate": {
+            "seconds": 1747094400,
+            "nanoseconds": 0
+          }
+        }
+      ],
+      "doseLogs": [
+        {
+          "id": "reconstructed_1747810113117_0",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747180800,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_1",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747267200,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_2",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747353600,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_3",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747440000,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_4",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747526400,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_5",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747612800,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "e4b39562-063c-411d-87f2-ab3cb6350de1",
+          "dosage": 600,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747724400,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "1747810991367",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747724400,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "PM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_9",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747752722,
+            "nanoseconds": 516000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_7",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747754565,
+            "nanoseconds": 516000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_6",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747756363,
+            "nanoseconds": 516000000
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_11",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747762835,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_10",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747763104,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "reconstructed_1747810113117_8",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747763792,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "ac6c5e32-875e-4776-a9d3-8a1b3ef738b6",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747810800,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "AM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        },
+        {
+          "id": "97905b3e-68c3-433d-b476-d0d32cb9dbd6",
+          "dosage": 300,
+          "unit": "mcg",
+          "date": {
+            "seconds": 1747810800,
+            "nanoseconds": 0
+          },
+          "timeOfDay": "PM",
+          "notes": "",
+          "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef"
+        }
+      ]
+    }
+  },
+  "inventory_peptides": {
+    "b6b9fde1-8bbf-4f91-93b2-5492049184b1": {
+      "id": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+      "name": "Retatrutide",
+      "num_vials": 9,
+      "concentration_per_vial_mcg": 6000,
+      "storage_location": "3 minifridge rest in deep freezer",
+      "batch_number": "",
+      "bac_water_volume_added": 3,
+      "typical_dose_mcg": 1000,
+      "low_stock_threshold": 2,
+      "active_vial_status": "IN_USE",
+      "expiry_date": null,
+      "active_vial_expiry_date": {
+        "seconds": 1749513600,
+        "nanoseconds": 0
+      },
+      "active_vial_reconstitution_date": {
+        "seconds": 1747094400,
+        "nanoseconds": 0
+      },
+      "created_at": {
+        "seconds": 1747188714,
+        "nanoseconds": 318000000
+      },
+      "updated_at": {
+        "seconds": 1747196093,
+        "nanoseconds": 215000000
+      }
+    },
+    "84160dbf-1d85-41e0-a312-24895c1d6672": {
+      "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "name": "Tesamorelin",
+      "num_vials": 1,
+      "concentration_per_vial_mcg": 5000,
+      "storage_location": "minifridge",
+      "batch_number": "",
+      "bac_water_volume_added": 2,
+      "typical_dose_mcg": 1000,
+      "low_stock_threshold": 2,
+      "active_vial_status": "FINISHED",
+      "expiry_date": null,
+      "active_vial_expiry_date": null,
+      "active_vial_reconstitution_date": null,
+      "created_at": {
+        "seconds": 1747161128,
+        "nanoseconds": 103000000
+      },
+      "updated_at": {
+        "seconds": 1747669426,
+        "nanoseconds": 523000000
+      }
+    },
+    "c4dce250-d7cf-4c05-a26d-3db101c78167": {
+      "id": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+      "name": "NAD+",
+      "num_vials": 10,
+      "concentration_per_vial_mcg": 500000,
+      "storage_location": "1 mini fridge rest in deep",
+      "batch_number": "",
+      "bac_water_volume_added": 3,
+      "typical_dose_mcg": 25000,
+      "low_stock_threshold": 3,
+      "active_vial_status": "IN_USE",
+      "expiry_date": null,
+      "active_vial_expiry_date": {
+        "seconds": 1749686400,
+        "nanoseconds": 0
+      },
+      "active_vial_reconstitution_date": {
+        "seconds": 1747267200,
+        "nanoseconds": 0
+      },
+      "created_at": {
+        "seconds": 1747195917,
+        "nanoseconds": 199000000
+      },
+      "updated_at": {
+        "seconds": 1747779214,
+        "nanoseconds": 982000000
+      }
+    },
+    "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef": {
+      "id": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+      "name": "Glow",
+      "num_vials": 7,
+      "concentration_per_vial_mcg": 10000,
+      "storage_location": "Mini Fridge",
+      "batch_number": "USAGE:14",
+      "bac_water_volume_added": 3,
+      "typical_dose_mcg": 300,
+      "low_stock_threshold": 2,
+      "active_vial_status": "IN_USE",
+      "expiry_date": null,
+      "active_vial_expiry_date": {
+        "seconds": 1749513600,
+        "nanoseconds": 0
+      },
+      "active_vial_reconstitution_date": {
+        "seconds": 1747094400,
+        "nanoseconds": 0
+      },
+      "created_at": {
+        "seconds": 1747189986,
+        "nanoseconds": 630000000
+      },
+      "updated_at": {
+        "seconds": 1747810264,
+        "nanoseconds": 419000000
+      }
+    }
+  },
+  "inventory_bac_water": {
+    "f4aeb83d-1ece-494e-9e08-1d2a4d5d8e52": {
+      "id": "f4aeb83d-1ece-494e-9e08-1d2a4d5d8e52",
+      "volume_ml_per_bottle": 30,
+      "num_bottles": 3,
+      "expiry_date": null,
+      "created_at": {
+        "seconds": 1747198135,
+        "nanoseconds": 213000000
+      },
+      "updated_at": {
+        "seconds": 1747198135,
+        "nanoseconds": 213000000
+      }
+    }
+  },
+  "inventory_syringes": {},
+  "inventory_other_items": {}
+}

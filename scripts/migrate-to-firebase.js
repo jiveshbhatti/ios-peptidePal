@@ -19,7 +19,8 @@ const {
   collection, 
   addDoc,
   getDocs,
-  deleteDoc 
+  deleteDoc,
+  Timestamp
 } = require('firebase/firestore');
 
 // Supabase credentials
@@ -31,7 +32,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAMnokBM7CVDE265ZLhZROjWrQ5w2DR2P0",
   authDomain: "peptidepal.firebaseapp.com",
   projectId: "peptidepal",
-  storageBucket: "peptidepal.firebasestorage.app",
+  storageBucket: "peptidepal.appspot.com", // Fixed storage bucket URL
   messagingSenderId: "229078698562",
   appId: "1:229078698562:web:a3a431131daad253b7fbdb"
 };
@@ -100,7 +101,21 @@ async function exportFromSupabase() {
 }
 
 /**
- * Transform Supabase data for Firebase Firestore
+ * Helper function to convert ISO string dates to Firebase Timestamp objects
+ */
+function isoStringToTimestamp(isoString) {
+  if (!isoString) return null;
+  try {
+    const date = new Date(isoString);
+    return Timestamp.fromDate(date);
+  } catch (e) {
+    console.warn('Error converting date', e);
+    return null;
+  }
+}
+
+/**
+ * Transform Supabase data for Firebase Firestore using our new schema
  */
 function transformForFirebase(exportFile) {
   console.log('Transforming data for Firebase...');
@@ -109,14 +124,13 @@ function transformForFirebase(exportFile) {
     // Read exported data
     const data = JSON.parse(fs.readFileSync(exportFile, 'utf8'));
     
-    // Create Firebase data structure
+    // Create Firebase data structure following our schema
     const firebaseData = {
       peptides: {},
-      inventory: {
-        bacWater: {},
-        syringes: {},
-        otherItems: {}
-      }
+      inventory_peptides: {},
+      inventory_bac_water: {},
+      inventory_syringes: {},
+      inventory_other_items: {}
     };
     
     // Map peptides and inventory together
@@ -125,10 +139,50 @@ function transformForFirebase(exportFile) {
       data.peptides.forEach(peptide => peptideMap.set(peptide.id, peptide));
     }
     
+    // Transform peptides according to PeptideDocument schema
+    if (data.peptides) {
+      data.peptides.forEach(peptide => {
+        // Create peptide document
+        firebaseData.peptides[peptide.id] = {
+          id: peptide.id,
+          name: peptide.name || 'Unnamed Peptide',
+          strength: peptide.strength || '',
+          dosageUnit: peptide.dosageUnit || peptide.dosageunit || 'mcg',
+          typicalDosageUnits: peptide.typicalDosageUnits || peptide.typicaldosageunits || 0,
+          schedule: peptide.schedule || { frequency: 'daily', times: ['AM'] },
+          notes: peptide.notes || '',
+          dataAiHint: peptide.dataAiHint || peptide.dataaihint || '',
+          imageUrl: peptide.imageUrl || peptide.imageurl || '',
+          
+          // Correctly convert dates to Firebase Timestamps
+          startDate: isoStringToTimestamp(peptide.startDate || peptide.startdate),
+          createdAt: isoStringToTimestamp(peptide.createdAt || peptide.createdat || new Date().toISOString()),
+          updatedAt: isoStringToTimestamp(peptide.updatedAt || peptide.updatedat || new Date().toISOString()),
+          
+          // Include vials directly in the document
+          vials: (peptide.vials || []).map(vial => ({
+            ...vial,
+            reconstitutionDate: isoStringToTimestamp(vial.reconstitutionDate || vial.dateAdded),
+            expirationDate: isoStringToTimestamp(vial.expirationDate)
+          })),
+          
+          // Include doseLogs directly in the document (if they exist)
+          doseLogs: (peptide.doseLogs || peptide.doselogs || []).map(log => ({
+            id: log.id || `log_${Math.random().toString(36).substr(2, 9)}`,
+            dosage: log.dosage || log.amount || 0,
+            unit: log.unit || peptide.dosageUnit || 'mcg',
+            date: isoStringToTimestamp(log.date || log.loggedAt),
+            timeOfDay: log.timeOfDay || 'AM',
+            notes: log.notes || '',
+            vialId: log.vialId || ''
+          }))
+        };
+      });
+    }
+    
+    // Transform inventory peptides according to InventoryPeptideDocument schema
     if (data.inventory_peptides) {
       data.inventory_peptides.forEach(invPeptide => {
-        const peptide = peptideMap.get(invPeptide.id) || {};
-        
         // Parse batch number for usage tracking
         let usedDoses = 0;
         if (invPeptide.batch_number && invPeptide.batch_number.startsWith('USAGE:')) {
@@ -139,107 +193,67 @@ function transformForFirebase(exportFile) {
           }
         }
         
-        // Create merged peptide document
-        firebaseData.peptides[invPeptide.id] = {
+        firebaseData.inventory_peptides[invPeptide.id] = {
+          id: invPeptide.id,
           name: invPeptide.name,
-          strength: peptide.strength || '',
-          dosageUnit: peptide.dosageUnit || 'mcg',
-          typicalDosageUnits: peptide.typicalDosageUnits || 0,
-          schedule: peptide.schedule || { frequency: 'daily', times: ['AM'] },
-          notes: peptide.notes || '',
-          startDate: peptide.startDate || new Date().toISOString(),
-          imageUrl: peptide.imageUrl || '',
-          dataAiHint: peptide.dataAiHint || '',
+          num_vials: invPeptide.num_vials || 0,
+          concentration_per_vial_mcg: invPeptide.concentration_per_vial_mcg || 0,
+          storage_location: invPeptide.storage_location || '',
+          batch_number: invPeptide.batch_number || '',
+          bac_water_volume_added: invPeptide.bac_water_volume_added || 0,
+          typical_dose_mcg: invPeptide.typical_dose_mcg || 0,
+          low_stock_threshold: invPeptide.low_stock_threshold || 2,
+          active_vial_status: invPeptide.active_vial_status || 'NONE',
           
-          // Inventory data
-          inventory: {
-            numVials: invPeptide.num_vials || 0,
-            concentrationPerVialMcg: invPeptide.concentration_per_vial_mcg || 0,
-            storageLocation: invPeptide.storage_location || '',
-            expiryDate: invPeptide.expiry_date || null,
-            lowStockThreshold: invPeptide.low_stock_threshold || 2,
-            typicalDoseMcg: invPeptide.typical_dose_mcg || 0
-          },
-          
-          // Active vial data
-          activeVial: {
-            status: invPeptide.active_vial_status || 'NONE',
-            reconstitutionDate: invPeptide.active_vial_reconstitution_date || null,
-            expiryDate: invPeptide.active_vial_expiry_date || null,
-            bacWaterVolumeAdded: invPeptide.bac_water_volume_added || 0,
-            usedDoses: usedDoses
-          },
-          
-          createdAt: invPeptide.created_at || new Date().toISOString(),
-          updatedAt: invPeptide.updated_at || new Date().toISOString()
+          // Convert dates to Firebase Timestamps
+          expiry_date: isoStringToTimestamp(invPeptide.expiry_date),
+          active_vial_expiry_date: isoStringToTimestamp(invPeptide.active_vial_expiry_date),
+          active_vial_reconstitution_date: isoStringToTimestamp(invPeptide.active_vial_reconstitution_date),
+          created_at: isoStringToTimestamp(invPeptide.created_at || new Date().toISOString()),
+          updated_at: isoStringToTimestamp(invPeptide.updated_at || new Date().toISOString())
         };
-        
-        // Extract vials subcollection
-        if (peptide.vials && Array.isArray(peptide.vials)) {
-          firebaseData.peptides[invPeptide.id].vials = {};
-          peptide.vials.forEach((vial, index) => {
-            const vialId = vial.id || `vial_${index}`;
-            firebaseData.peptides[invPeptide.id].vials[vialId] = {
-              ...vial,
-              peptideId: invPeptide.id
-            };
-          });
-        }
-        
-        // Extract dose logs subcollection
-        if (peptide.doseLogs && Array.isArray(peptide.doseLogs)) {
-          firebaseData.peptides[invPeptide.id].doseLogs = {};
-          peptide.doseLogs.forEach((log, index) => {
-            const logId = log.id || `log_${index}`;
-            firebaseData.peptides[invPeptide.id].doseLogs[logId] = {
-              ...log,
-              peptideId: invPeptide.id,
-              createdAt: log.date // Use the log date as createdAt
-            };
-          });
-        }
       });
     }
     
-    // Transform inventory BAC water
+    // Transform inventory BAC water according to InventoryBacWaterDocument schema
     if (data.inventory_bac_water) {
       data.inventory_bac_water.forEach((item, index) => {
-        const itemId = item.id || `bac_${index}`;
-        firebaseData.inventory.bacWater[itemId] = {
-          volumeMlPerBottle: item.volume_ml_per_bottle || 0,
-          numBottles: item.num_bottles || 0,
-          expiryDate: item.expiry_date || null,
-          createdAt: item.created_at || new Date().toISOString(),
-          updatedAt: item.updated_at || new Date().toISOString()
+        firebaseData.inventory_bac_water[item.id || `bac_${index}`] = {
+          id: item.id || `bac_${index}`,
+          volume_ml_per_bottle: item.volume_ml_per_bottle || 0,
+          num_bottles: item.num_bottles || 0,
+          expiry_date: isoStringToTimestamp(item.expiry_date),
+          created_at: isoStringToTimestamp(item.created_at || new Date().toISOString()),
+          updated_at: isoStringToTimestamp(item.updated_at || new Date().toISOString())
         };
       });
     }
     
-    // Transform inventory syringes
+    // Transform inventory syringes according to InventorySyringeDocument schema
     if (data.inventory_syringes) {
       data.inventory_syringes.forEach((item, index) => {
-        const itemId = item.id || `syringe_${index}`;
-        firebaseData.inventory.syringes[itemId] = {
-          typeSize: item.type_size || '',
+        firebaseData.inventory_syringes[item.id || `syringe_${index}`] = {
+          id: item.id || `syringe_${index}`,
+          type_size: item.type_size || '',
           quantity: item.quantity || 0,
           brand: item.brand || '',
-          createdAt: item.created_at || new Date().toISOString(),
-          updatedAt: item.updated_at || new Date().toISOString()
+          created_at: isoStringToTimestamp(item.created_at || new Date().toISOString()),
+          updated_at: isoStringToTimestamp(item.updated_at || new Date().toISOString())
         };
       });
     }
     
-    // Transform inventory other items
+    // Transform inventory other items according to InventoryOtherItemDocument schema
     if (data.inventory_other_items) {
       data.inventory_other_items.forEach((item, index) => {
-        const itemId = item.id || `item_${index}`;
-        firebaseData.inventory.otherItems[itemId] = {
-          itemName: item.item_name || '',
+        firebaseData.inventory_other_items[item.id || `item_${index}`] = {
+          id: item.id || `item_${index}`,
+          item_name: item.item_name || '',
           description: item.description || '',
           quantity: item.quantity || 0,
           notes: item.notes || '',
-          createdAt: item.created_at || new Date().toISOString(),
-          updatedAt: item.updated_at || new Date().toISOString()
+          created_at: isoStringToTimestamp(item.created_at || new Date().toISOString()),
+          updated_at: isoStringToTimestamp(item.updated_at || new Date().toISOString())
         };
       });
     }
@@ -273,59 +287,82 @@ async function importToFirebase(transformedFile) {
     const shouldClear = process.argv.includes('--clear');
     if (shouldClear) {
       console.log('Clearing existing Firebase data...');
-      await clearFirebaseCollections(['peptides']);
+      await clearFirebaseCollections(['peptides', 'inventory_peptides', 'inventory_bac_water', 'inventory_syringes', 'inventory_other_items']);
     }
     
-    // Import peptides
+    // Import peptides using our new schema
     console.log('Importing peptides...');
     for (const [peptideId, peptideData] of Object.entries(data.peptides)) {
-      // Extract subcollections
-      const vials = peptideData.vials || {};
-      const doseLogs = peptideData.doseLogs || {};
-      
-      // Remove subcollections from main document
-      delete peptideData.vials;
-      delete peptideData.doseLogs;
-      
-      // Add main peptide document
       console.log(`Importing peptide: ${peptideData.name} (${peptideId})`);
       const peptideRef = doc(firestore, 'peptides', peptideId);
-      await setDoc(peptideRef, peptideData);
       
-      // Import vials subcollection
-      for (const [vialId, vialData] of Object.entries(vials)) {
-        console.log(`- Importing vial: ${vialId}`);
-        const vialRef = doc(peptideRef, 'vials', vialId);
-        await setDoc(vialRef, vialData);
-      }
+      // Convert any null values to undefined to avoid Firebase errors
+      const cleanedData = Object.entries(peptideData).reduce((acc, [key, value]) => {
+        if (value !== null) acc[key] = value;
+        return acc;
+      }, {});
       
-      // Import doseLogs subcollection
-      for (const [logId, logData] of Object.entries(doseLogs)) {
-        console.log(`- Importing dose log: ${logId}`);
-        const logRef = doc(peptideRef, 'doseLogs', logId);
-        await setDoc(logRef, logData);
-      }
+      await setDoc(peptideRef, cleanedData);
     }
     
-    // Import inventory collections
-    console.log('Importing inventory items...');
+    // Import inventory peptides
+    console.log('Importing inventory peptides...');
+    for (const [id, itemData] of Object.entries(data.inventory_peptides)) {
+      console.log(`Importing inventory peptide: ${itemData.name} (${id})`);
+      const itemRef = doc(firestore, 'inventory_peptides', id);
+      
+      // Clean null values
+      const cleanedData = Object.entries(itemData).reduce((acc, [key, value]) => {
+        if (value !== null) acc[key] = value;
+        return acc;
+      }, {});
+      
+      await setDoc(itemRef, cleanedData);
+    }
     
     // Import BAC water
-    for (const [id, itemData] of Object.entries(data.inventory.bacWater || {})) {
+    console.log('Importing BAC water...');
+    for (const [id, itemData] of Object.entries(data.inventory_bac_water)) {
       console.log(`Importing BAC water: ${id}`);
-      await addDoc(collection(firestore, 'inventory/bacWater/items'), itemData);
+      const itemRef = doc(firestore, 'inventory_bac_water', id);
+      
+      // Clean null values
+      const cleanedData = Object.entries(itemData).reduce((acc, [key, value]) => {
+        if (value !== null) acc[key] = value;
+        return acc;
+      }, {});
+      
+      await setDoc(itemRef, cleanedData);
     }
     
     // Import syringes
-    for (const [id, itemData] of Object.entries(data.inventory.syringes || {})) {
+    console.log('Importing syringes...');
+    for (const [id, itemData] of Object.entries(data.inventory_syringes)) {
       console.log(`Importing syringe: ${id}`);
-      await addDoc(collection(firestore, 'inventory/syringes/items'), itemData);
+      const itemRef = doc(firestore, 'inventory_syringes', id);
+      
+      // Clean null values
+      const cleanedData = Object.entries(itemData).reduce((acc, [key, value]) => {
+        if (value !== null) acc[key] = value;
+        return acc;
+      }, {});
+      
+      await setDoc(itemRef, cleanedData);
     }
     
     // Import other items
-    for (const [id, itemData] of Object.entries(data.inventory.otherItems || {})) {
+    console.log('Importing other items...');
+    for (const [id, itemData] of Object.entries(data.inventory_other_items)) {
       console.log(`Importing other item: ${id}`);
-      await addDoc(collection(firestore, 'inventory/otherItems/items'), itemData);
+      const itemRef = doc(firestore, 'inventory_other_items', id);
+      
+      // Clean null values
+      const cleanedData = Object.entries(itemData).reduce((acc, [key, value]) => {
+        if (value !== null) acc[key] = value;
+        return acc;
+      }, {});
+      
+      await setDoc(itemRef, cleanedData);
     }
     
     console.log('Import complete!');
@@ -360,20 +397,71 @@ async function clearFirebaseCollections(collectionNames) {
  */
 async function runMigration() {
   try {
-    const exportFile = await exportFromSupabase();
-    const transformedFile = transformForFirebase(exportFile);
+    console.log('🚀 Starting the safe migration process (Supabase → Firebase)');
+    console.log('⚠️ IMPORTANT: No data will be deleted from Supabase');
+    console.log('📋 Migration Steps:');
+    console.log('  1. Export data from Supabase');
+    console.log('  2. Transform data for Firebase format');
+    console.log('  3. Import data to Firebase (if --no-import is not specified)');
+    console.log('  4. Verify successful migration');
+    console.log('');
     
-    // Check if we should import to Firebase
+    // Step 1: Export from Supabase
+    console.log('👉 STEP 1: Exporting from Supabase...');
+    const exportFile = await exportFromSupabase();
+    console.log('✅ Export successful!');
+    console.log('');
+    
+    // Step 2: Transform for Firebase
+    console.log('👉 STEP 2: Transforming data for Firebase...');
+    const transformedFile = transformForFirebase(exportFile);
+    console.log('✅ Transformation successful!');
+    console.log('');
+    
+    // Step 3: Import to Firebase (optional)
     const shouldImport = !process.argv.includes('--no-import');
+    
     if (shouldImport) {
-      await importToFirebase(transformedFile);
+      console.log('👉 STEP 3: Importing to Firebase...');
+      console.log('⚠️ This will ADD to existing Firebase data (no Supabase data will be deleted)');
+      
+      // Ask for confirmation before proceeding with import
+      const readline = require('readline');
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+      });
+      
+      const confirmation = await new Promise(resolve => {
+        rl.question('Do you want to continue with the import to Firebase? (yes/no): ', answer => {
+          resolve(answer.toLowerCase() === 'yes');
+          rl.close();
+        });
+      });
+      
+      if (confirmation) {
+        await importToFirebase(transformedFile);
+        console.log('✅ Import successful!');
+      } else {
+        console.log('⏭️ Import skipped by user. Your transformed data is saved at:');
+        console.log(`   ${transformedFile}`);
+      }
     } else {
-      console.log('Skipping import to Firebase. Data is ready for manual import.');
+      console.log('⏭️ Import to Firebase skipped (--no-import flag detected)');
+      console.log('📄 Your transformed data is ready for manual import at:');
+      console.log(`   ${transformedFile}`);
     }
     
-    console.log('Migration completed successfully!');
+    console.log('');
+    console.log('🎉 Migration process completed successfully!');
+    console.log('');
+    console.log('📱 Next steps:');
+    console.log('  1. In the app, use the database switcher to toggle to Firebase');
+    console.log('  2. Test your app with the Firebase database');
+    console.log('  3. When ready, set Firebase as the default in DatabaseContext.tsx');
+    
   } catch (error) {
-    console.error('Migration failed:', error);
+    console.error('❌ Migration failed:', error);
     process.exit(1);
   }
 }
