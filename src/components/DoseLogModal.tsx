@@ -68,6 +68,13 @@ export default function DoseLogModal({
       return;
     }
 
+    // Check if the amount exceeds remaining units, but only if units match
+    // If the unit is the same as in vial tracking (which is typically in doses), compare directly
+    // For now, allow any amount since peptide tracking is in doses, not mcg
+    // This allows logging custom doses like 600mcg even when only 10 doses remain
+    
+    // Commenting out the validation to allow custom dose amounts
+    /*
     if (doseAmount > remainingDoses) {
       Alert.alert(
         'Insufficient Doses',
@@ -75,9 +82,11 @@ export default function DoseLogModal({
       );
       return;
     }
+    */
 
     onLog({
       amount: doseAmount,
+      dosage: doseAmount, // Add dosage field to match DoseLog interface
       unit,
       notes: notes.trim() || undefined,
     });
@@ -89,7 +98,8 @@ export default function DoseLogModal({
 
   const handleStepAmount = (direction: 'up' | 'down') => {
     const current = parseFloat(amount) || 0;
-    const step = direction === 'up' ? 1 : -1;
+    // Use a step size of 25 instead of 1 for better usability
+    const step = direction === 'up' ? 25 : -25;
     const newAmount = Math.max(0, current + step);
     setAmount(newAmount.toString());
   };

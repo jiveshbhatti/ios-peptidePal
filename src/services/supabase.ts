@@ -2,10 +2,14 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import 'react-native-url-polyfill/auto';
 import { Platform } from 'react-native';
+import { config } from '../config';
 
-// Same Supabase credentials as the web app
-const SUPABASE_URL = 'https://yawjzpovpfccgisrrfjo.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlhd2p6cG92cGZjY2dpc3JyZmpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDY5OTg4MDksImV4cCI6MjA2MjU3NDgwOX0.n00tZcmuTEdC8gEPD63_bedFsO8iQv5YMWOPboKnT2o';
+// Log the current environment
+console.log(`Running in ${config.env} environment with ${config.supabase.label} database`);
+
+// Get database credentials from config
+const SUPABASE_URL_VALUE = config.supabase.url;
+const SUPABASE_ANON_KEY_VALUE = config.supabase.key;
 
 // Special config for web to avoid Node.js dependencies
 const options = {
@@ -27,4 +31,8 @@ if (Platform.OS === 'web') {
   };
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, options);
+export const supabase = createClient(SUPABASE_URL_VALUE, SUPABASE_ANON_KEY_VALUE, options);
+
+// Log connection info (redacting sensitive parts of the key)
+console.log(`Connected to Supabase at: ${SUPABASE_URL_VALUE}`);
+console.log(`Using key: ${SUPABASE_ANON_KEY_VALUE.substring(0, 8)}...${SUPABASE_ANON_KEY_VALUE.substring(SUPABASE_ANON_KEY_VALUE.length - 8)}`);

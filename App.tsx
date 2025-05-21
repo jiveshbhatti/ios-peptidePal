@@ -5,7 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import TabNavigator from '@/navigation/TabNavigator';
 import { DataProvider } from '@/contexts/DataContext';
-import { supabase } from '@/services/supabase';
+import { DatabaseProvider } from '@/contexts/DatabaseContext';
+import { supabase, getSupabaseClient } from '@/services/supabase-dynamic';
 import { theme } from '@/constants/theme';
 
 export default function App() {
@@ -18,8 +19,9 @@ export default function App() {
       try {
         setMessage('Connecting to database...');
         
-        // Ping Supabase to check connection
-        const { data, error } = await supabase.from('peptides').select('id').limit(1);
+        // Get current client and ping Supabase to check connection
+        const supabaseClient = getSupabaseClient();
+        const { data, error } = await supabaseClient.from('peptides').select('id').limit(1);
         
         if (error) {
           console.error('Supabase connection error:', error);
@@ -67,11 +69,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="auto" />
-      <DataProvider>
-        <NavigationContainer>
-          <TabNavigator />
-        </NavigationContainer>
-      </DataProvider>
+      <DatabaseProvider>
+        <DataProvider>
+          <NavigationContainer>
+            <TabNavigator />
+          </NavigationContainer>
+        </DataProvider>
+      </DatabaseProvider>
     </SafeAreaProvider>
   );
 }

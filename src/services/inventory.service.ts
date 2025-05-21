@@ -4,6 +4,22 @@ import { Peptide, Vial } from '@/types/peptide';
 import { peptideService } from './peptide.service';
 
 export const inventoryService = {
+  // Update inventory peptide with usage tracking information
+  async updatePeptideUsage(peptideId: string, usedDoses: number): Promise<boolean> {
+    try {
+      // Update the batch_number field with usage information
+      const { error } = await supabase
+        .from('inventory_peptides')
+        .update({ batch_number: `USAGE:${usedDoses}` })
+        .eq('id', peptideId);
+      
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      console.error('Error updating peptide usage tracking:', error);
+      return false;
+    }
+  },
   // Peptide Inventory
   async getInventoryPeptides(): Promise<InventoryPeptide[]> {
     const { data, error } = await supabase
@@ -177,6 +193,10 @@ export const inventoryService = {
       ];
 
       await peptideService.updatePeptide(peptideId, { vials: updatedVials });
+      
+      // Initialize usage tracking in batch_number field (0 doses used initially)
+      await this.updatePeptideUsage(peptideId, 0);
+      
       return true;
     } catch (error) {
       console.error('Error activating vial:', error);

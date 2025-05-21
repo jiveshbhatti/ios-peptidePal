@@ -36,7 +36,13 @@
       "Bash(xcrun simctl launch:*)",
       "Bash(xcrun simctl terminate:*)",
       "Bash(adb logcat:*)",
-      "Bash(chmod:*)"
+      "Bash(chmod:*)",
+      "Bash(npx supabase login)",
+      "Bash(npx supabase:*)",
+      "Bash(./dump-and-import-schema.sh:*)",
+      "Bash(./fix-glow-complete.sh:*)",
+      "Bash(mkdir:*)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }

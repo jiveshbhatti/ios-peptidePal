@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Peptide } from '@/types/peptide';
 import { InventoryPeptide, InventoryBacWater, InventorySyringe, InventoryOtherItem } from '@/types/inventory';
-import { supabase } from '@/services/supabase';
+import { getSupabaseClient } from '@/services/supabase-dynamic';
+import { useDatabase } from './DatabaseContext';
 
 interface DataContextType {
   peptides: Peptide[];
@@ -25,36 +26,59 @@ export function DataProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Get database service from context
+  const { service, useFirebase } = useDatabase();
+
   const fetchData = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const [
-        { data: peptideData, error: peptideError },
-        { data: inventoryData, error: inventoryError },
-        { data: bacWaterData, error: bacWaterError },
-        { data: syringeData, error: syringeError },
-        { data: otherData, error: otherError },
-      ] = await Promise.all([
-        supabase.from('peptides').select('*'),
-        supabase.from('inventory_peptides').select('*'),
-        supabase.from('inventory_bac_water').select('*'),
-        supabase.from('inventory_syringes').select('*'),
-        supabase.from('inventory_other_items').select('*'),
-      ]);
+      if (useFirebase) {
+        // Firebase data fetching
+        const peptideData = await service.getPeptides();
+        const inventoryData = await service.getInventoryPeptides();
+        
+        // Set states
+        setPeptides(peptideData);
+        setInventoryPeptides(inventoryData);
+        
+        // For now, set empty arrays for other collections
+        // TODO: Implement when these collections are migrated
+        setBacWater([]);
+        setSyringes([]);
+        setOtherItems([]);
+      } else {
+        // Original Supabase fetching
+        const supabase = getSupabaseClient();
+        
+        const [
+          { data: peptideData, error: peptideError },
+          { data: inventoryData, error: inventoryError },
+          { data: bacWaterData, error: bacWaterError },
+          { data: syringeData, error: syringeError },
+          { data: otherData, error: otherError },
+        ] = await Promise.all([
+          supabase.from('peptides').select('*'),
+          supabase.from('inventory_peptides').select('*'),
+          supabase.from('inventory_bac_water').select('*'),
+          supabase.from('inventory_syringes').select('*'),
+          supabase.from('inventory_other_items').select('*'),
+        ]);
 
-      if (peptideError) throw peptideError;
-      if (inventoryError) throw inventoryError;
-      if (bacWaterError) throw bacWaterError;
-      if (syringeError) throw syringeError;
-      if (otherError) throw otherError;
-
-      setPeptides(peptideData || []);
-      setInventoryPeptides(inventoryData || []);
-      setBacWater(bacWaterData || []);
-      setSyringes(syringeData || []);
-      setOtherItems(otherData || []);
+        if (peptideError) throw peptideError;
+        if (inventoryError) throw inventoryError;
+        if (bacWaterError) throw bacWaterError;
+        if (syringeError) throw syringeError;
+        if (otherError) throw otherError;
+        
+        // Set state with fetched data
+        setPeptides(peptideData || []);
+        setInventoryPeptides(inventoryData || []);
+        setBacWater(bacWaterData || []);
+        setSyringes(syringeData || []);
+        setOtherItems(otherData || []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {

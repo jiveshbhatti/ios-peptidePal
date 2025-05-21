@@ -8,6 +8,7 @@ import HomeScreen from '@/screens/HomeScreen';
 import InventoryScreen from '@/screens/InventoryScreen';
 import CalculatorScreen from '@/screens/CalculatorScreen';
 import SummaryScreen from '@/screens/SummaryScreen';
+import SettingsScreen from '@/screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -63,6 +64,13 @@ export default function TabNavigator() {
         component={SummaryScreen}
         options={{
           tabBarIcon: ({ color, size }) => <Icon.BarChart2 stroke={color} width={size} height={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Icon.Settings stroke={color} width={size} height={size} />,
         }}
       />
     </Tab.Navigator>

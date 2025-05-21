@@ -1,0 +1,72 @@
+{
+  "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+  "name": "Tesamorelin",
+  "strength": "5000mcg total",
+  "dosageUnit": "mcg",
+  "typicalDosageUnits": 1000,
+  "schedule": {
+    "times": [
+      "AM"
+    ],
+    "frequency": "daily"
+  },
+  "vials": [
+    {
+      "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "name": "Vial from batch N/A (Inv ID: 84160dbf)",
+      "notes": "Activated from inventory. Original stock: 2 vials. (Vial depleted on 2025-05-19)",
+      "isActive": false,
+      "dateAdded": "2025-05-14",
+      "expirationDate": "2025-06-11T00:00:00+00:00",
+      "initialAmountUnits": 5,
+      "remainingAmountUnits": 0,
+      "reconstitutionBacWaterMl": 2
+    }
+  ],
+  "doseLogs": [
+    {
+      "id": "ad754360-14dc-4026-ad83-5c1047182eaf",
+      "date": "2025-05-15T14:47:29.926Z",
+      "unit": "mcg",
+      "dosage": 1000,
+      "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "timeOfDay": "AM"
+    },
+    {
+      "id": "00223ecb-bb59-4d2c-bf91-2d2e41b68b4c",
+      "date": "2025-05-16T13:59:59.947Z",
+      "unit": "mcg",
+      "dosage": 1000,
+      "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "timeOfDay": "AM"
+    },
+    {
+      "id": "0eba30bb-57bb-4f88-ad19-9fd7f8ef7df5",
+      "date": "2025-05-18T04:14:15.453Z",
+      "unit": "mcg",
+      "dosage": 1000,
+      "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "timeOfDay": "AM"
+    },
+    {
+      "id": "e62dba58-1dab-418e-bb0d-f5362011b7a1",
+      "date": "2025-05-18T15:15:46.645Z",
+      "unit": "mcg",
+      "dosage": 1000,
+      "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "timeOfDay": "AM"
+    },
+    {
+      "id": "5bb3ee26-2857-4fc7-8fff-ca6d250f4690",
+      "date": "2025-05-19T15:33:34.750Z",
+      "unit": "mcg",
+      "dosage": 1000,
+      "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+      "timeOfDay": "AM"
+    }
+  ],
+  "imageUrl": null,
+  "dataAiHint": null,
+  "notes": " 40.0 units = 1 mg",
+  "startDate": "2025-05-15T00:00:00+00:00"
+}

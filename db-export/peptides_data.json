@@ -1,0 +1,325 @@
+[
+  {
+    "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+    "name": "Tesamorelin",
+    "strength": "5000mcg total",
+    "dosageUnit": "mcg",
+    "typicalDosageUnits": 1000,
+    "schedule": {
+      "times": [
+        "AM"
+      ],
+      "frequency": "daily"
+    },
+    "vials": [
+      {
+        "id": "84160dbf-1d85-41e0-a312-24895c1d6672",
+        "name": "Vial from batch N/A (Inv ID: 84160dbf)",
+        "notes": "Activated from inventory. Original stock: 2 vials. (Vial depleted on 2025-05-19)",
+        "isActive": false,
+        "dateAdded": "2025-05-14",
+        "expirationDate": "2025-06-11T00:00:00+00:00",
+        "initialAmountUnits": 5,
+        "remainingAmountUnits": 0,
+        "reconstitutionBacWaterMl": 2
+      }
+    ],
+    "doseLogs": [
+      {
+        "id": "ad754360-14dc-4026-ad83-5c1047182eaf",
+        "date": "2025-05-15T14:47:29.926Z",
+        "unit": "mcg",
+        "dosage": 1000,
+        "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "00223ecb-bb59-4d2c-bf91-2d2e41b68b4c",
+        "date": "2025-05-16T13:59:59.947Z",
+        "unit": "mcg",
+        "dosage": 1000,
+        "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "0eba30bb-57bb-4f88-ad19-9fd7f8ef7df5",
+        "date": "2025-05-18T04:14:15.453Z",
+        "unit": "mcg",
+        "dosage": 1000,
+        "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "e62dba58-1dab-418e-bb0d-f5362011b7a1",
+        "date": "2025-05-18T15:15:46.645Z",
+        "unit": "mcg",
+        "dosage": 1000,
+        "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "5bb3ee26-2857-4fc7-8fff-ca6d250f4690",
+        "date": "2025-05-19T15:33:34.750Z",
+        "unit": "mcg",
+        "dosage": 1000,
+        "vialId": "84160dbf-1d85-41e0-a312-24895c1d6672",
+        "timeOfDay": "AM"
+      }
+    ],
+    "imageUrl": null,
+    "dataAiHint": null,
+    "notes": " 40.0 units = 1 mg",
+    "startDate": "2025-05-15T00:00:00+00:00"
+  },
+  {
+    "id": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+    "name": "Retatrutide",
+    "strength": "6000mcg total",
+    "dosageUnit": "mg",
+    "typicalDosageUnits": 1,
+    "schedule": {
+      "times": [
+        "AM"
+      ],
+      "frequency": "specific_days",
+      "daysOfWeek": [
+        1,
+        4
+      ]
+    },
+    "vials": [
+      {
+        "id": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+        "name": "Vial from batch N/A (Inv ID: b6b9fde1)",
+        "notes": "Activated from inventory. Original stock: 10 vials.",
+        "isActive": true,
+        "dateAdded": "2025-05-13",
+        "expirationDate": "2025-06-10T00:00:00.000Z",
+        "initialAmountUnits": 6000,
+        "remainingAmountUnits": 5998,
+        "reconstitutionBacWaterMl": 3
+      }
+    ],
+    "doseLogs": [
+      {
+        "id": "d4d14551-ca47-46b8-98d9-30027b339c30",
+        "date": "2025-05-15T14:47:29.926Z",
+        "unit": "mg",
+        "dosage": 1,
+        "vialId": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "29aa3536-c847-4120-83f3-2f97c9d35444",
+        "date": "2025-05-19T15:33:34.750Z",
+        "unit": "mg",
+        "dosage": 1,
+        "vialId": "b6b9fde1-8bbf-4f91-93b2-5492049184b1",
+        "timeOfDay": "AM"
+      }
+    ],
+    "imageUrl": "https://picsum.photos/200/200?random=362",
+    "dataAiHint": "Retatrutide ",
+    "notes": "50 units = 1 mg",
+    "startDate": "2025-05-15T00:00:00+00:00"
+  },
+  {
+    "id": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+    "name": "NAD+",
+    "strength": "25mg twice a week",
+    "dosageUnit": "mcg",
+    "typicalDosageUnits": 25000,
+    "schedule": {
+      "times": [
+        "AM"
+      ],
+      "frequency": "specific_days",
+      "daysOfWeek": [
+        2,
+        5
+      ]
+    },
+    "vials": [
+      {
+        "id": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+        "name": "Vial from batch N/A (Inv ID: c4dce250)",
+        "notes": "Activated from inventory. Original stock: 12 vials.",
+        "isActive": true,
+        "dateAdded": "2025-05-15",
+        "expirationDate": "2025-06-12T00:00:00+00:00",
+        "initialAmountUnits": 20,
+        "remainingAmountUnits": 17,
+        "reconstitutionBacWaterMl": 3
+      }
+    ],
+    "doseLogs": [
+      {
+        "id": "366390bc-1b4b-4f48-b49d-4c41a61aa61d",
+        "date": "2025-05-16T07:00:00.000Z",
+        "unit": "mg",
+        "dosage": 25,
+        "vialId": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "881a1fa0-7559-4fb6-b0f9-59cd6015096e",
+        "date": "2025-05-18T15:15:46.645Z",
+        "unit": "mg",
+        "dosage": 25000,
+        "vialId": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "bab39369-3b70-4d1d-b1f1-9dcfc85f1960",
+        "date": "2025-05-20T07:00:00.000Z",
+        "unit": "mg",
+        "dosage": 25,
+        "vialId": "c4dce250-d7cf-4c05-a26d-3db101c78167",
+        "timeOfDay": "AM"
+      }
+    ],
+    "imageUrl": null,
+    "dataAiHint": "NAD+",
+    "notes": "15units = 25mg\n\ntwice a week",
+    "startDate": "2025-05-15T00:00:00+00:00"
+  },
+  {
+    "id": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+    "name": "Glow",
+    "strength": "10000mcg total",
+    "dosageUnit": "mcg",
+    "typicalDosageUnits": 300,
+    "schedule": {
+      "times": [
+        "AM",
+        "PM"
+      ],
+      "frequency": "daily"
+    },
+    "vials": [
+      {
+        "id": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "name": "Vial from batch N/A (Inv ID: c3c4391d)",
+        "notes": "Activated from inventory. Original stock: 9 vials.",
+        "isActive": true,
+        "dateAdded": "2025-05-13",
+        "expirationDate": "2025-06-10T00:00:00.000Z",
+        "initialAmountUnits": 29,
+        "remainingAmountUnits": 18,
+        "reconstitutionBacWaterMl": 3
+      }
+    ],
+    "doseLogs": [
+      {
+        "id": "cdca3f2b-f243-42dd-97a6-dd5d2d5bf2ba",
+        "date": "2025-05-14T03:16:35.089Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "655d7107-9019-4067-beed-14d259fe0bab",
+        "date": "2025-05-14T04:12:44.551Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "PM"
+      },
+      {
+        "id": "3c4cb8b9-0e9b-4bee-9bf5-ea4fff87dfe4",
+        "date": "2025-05-14T07:00:00.000Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "22b3093d-df2c-4255-8ec8-c97438ce0c7e",
+        "date": "2025-05-14T07:00:00.000Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "PM"
+      },
+      {
+        "id": "c68abb6a-f7e1-429d-9f7a-005eef4bd12a",
+        "date": "2025-05-15T14:47:29.926Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "81361fd6-8542-4d51-a97e-f5a86be080b3",
+        "date": "2025-05-16T04:16:42.186Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "PM"
+      },
+      {
+        "id": "5bfa4173-1705-4653-ac1f-de9c3dcf534e",
+        "date": "2025-05-16T13:59:59.947Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "76d63b5d-5240-4b5f-b0bc-e8919412dd07",
+        "date": "2025-05-18T04:14:15.453Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "PM"
+      },
+      {
+        "id": "ddb4c3d5-2240-4ecf-9b75-fbcb6ae93181",
+        "date": "2025-05-18T05:10:15.316Z",
+        "unit": "mcg",
+        "dosage": 600,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "119602ad-90e1-4129-a0eb-c6783faafb3f",
+        "date": "2025-05-18T15:15:46.645Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "7fa00eab-4346-458a-b66e-96eb6b4eaaeb",
+        "date": "2025-05-19T07:00:00.000Z",
+        "unit": "mcg",
+        "dosage": 300,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "PM"
+      },
+      {
+        "id": "d42223f7-0394-4569-9d06-68ec88540a07",
+        "date": "2025-05-19T15:33:34.750Z",
+        "unit": "mcg",
+        "dosage": 600,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      },
+      {
+        "id": "1747780820681",
+        "date": "2025-05-20T22:36:28.411Z",
+        "unit": "mcg",
+        "notes": "Missed last night dose so took in the morning as double",
+        "amount": 600,
+        "dosage": 600,
+        "vialId": "c3c4391d-c1fe-4e27-bb6b-faae10ec27ef",
+        "timeOfDay": "AM"
+      }
+    ],
+    "imageUrl": "https://picsum.photos/200/200?random=421&hint=Glow%20peptide",
+    "dataAiHint": "Glow peptide",
+    "notes": "9 units = 300 mcg",
+    "startDate": "2025-05-13T07:00:00+00:00"
+  }
+]

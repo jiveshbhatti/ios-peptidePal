@@ -1,0 +1,17 @@
+{
+  "timestamp": "2025-05-21T07-00-41.322Z",
+  "tables": [
+    "peptides",
+    "inventory_peptides",
+    "inventory_bac_water",
+    "inventory_syringes",
+    "inventory_other_items"
+  ],
+  "recordCounts": {
+    "peptides": 4,
+    "inventory_peptides": 4,
+    "inventory_bac_water": 1,
+    "inventory_syringes": 0,
+    "inventory_other_items": 0
+  }
+}

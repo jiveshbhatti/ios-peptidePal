@@ -41,8 +41,27 @@ export default function InventoryPeptideCard({
       return 0;
     }
     
-    const totalDoses = peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg;
-    // Estimate remaining doses based on active vial status and reconstitution date
+    const totalDoses = Math.floor(peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg);
+    
+    // Check for usage tracking info in batch_number field
+    let usedDoses = 0;
+    if (peptide.batch_number && peptide.batch_number.startsWith('USAGE:')) {
+      try {
+        const usageString = peptide.batch_number.split('USAGE:')[1];
+        usedDoses = parseInt(usageString, 10);
+        console.log(`Found usage info for ${peptide.name}: ${usedDoses} doses used out of ${totalDoses}`);
+        
+        // Calculate percentage based on actual usage
+        const remainingDoses = Math.max(0, totalDoses - usedDoses);
+        const actualPercentage = (remainingDoses / totalDoses) * 100;
+        return actualPercentage;
+      } catch (error) {
+        console.error('Error parsing usage info from batch_number:', error);
+        // Fall back to time-based method if parsing fails
+      }
+    }
+    
+    // Fallback: Estimate remaining doses based on active vial status and reconstitution date
     const reconDate = peptide.active_vial_reconstitution_date ? new Date(peptide.active_vial_reconstitution_date) : null;
     const expiryDate = peptide.active_vial_expiry_date ? new Date(peptide.active_vial_expiry_date) : null;
     
@@ -128,7 +147,16 @@ export default function InventoryPeptideCard({
                 />
               </View>
               <Text style={styles.progressText}>
-                {remainingPercentage < 25 ? 'Low remaining in active vial' : 'Active vial in use'}
+                {peptide.batch_number && peptide.batch_number.startsWith('USAGE:') ? (
+                  (() => {
+                    const totalDoses = Math.floor(peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg);
+                    const usedDoses = parseInt(peptide.batch_number.split('USAGE:')[1], 10);
+                    const remainingDoses = Math.max(0, totalDoses - usedDoses);
+                    return `${usedDoses} doses used / ${remainingDoses} remaining`;
+                  })()
+                ) : (
+                  remainingPercentage < 25 ? 'Low remaining in active vial' : 'Active vial in use'
+                )}
               </Text>
             </View>
           )}
