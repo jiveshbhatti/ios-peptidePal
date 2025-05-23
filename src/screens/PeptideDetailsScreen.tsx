@@ -17,12 +17,14 @@ import { useDatabase } from '@/contexts/DatabaseContext';
 import { Peptide, Vial, DoseLog } from '@/types/peptide';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import VialHistoryCard from '@/components/VialHistoryCard';
+import EditVialModal from '@/components/EditVialModal';
 import DoseTrendChart from '@/components/DoseTrendChart';
 import RemainingDosesVisualization from '@/components/RemainingDosesVisualization';
 import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { inventoryService } from '@/services/inventory.service';
 import { AppHaptics } from '@/utils/haptics';
 import { calculateRemainingDoses } from '@/utils/dose-calculations';
+import { firebaseCleanService } from '@/services/firebase-clean';
 
 type PeptideDetailsRouteProp = RouteProp<RootStackParamList, 'PeptideDetails'>;
 type PeptideDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'PeptideDetails'>;
@@ -36,6 +38,8 @@ export default function PeptideDetailsScreen() {
   
   const [selectedTab, setSelectedTab] = useState<'overview' | 'history' | 'stats'>('overview');
   const [refreshing, setRefreshing] = useState(false);
+  const [editingVial, setEditingVial] = useState<Vial | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
   
   const peptide = peptides.find(p => p.id === peptideId);
   const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptideId);
@@ -211,6 +215,56 @@ export default function PeptideDetailsScreen() {
     );
   };
 
+  const handleEditVial = useCallback((vial: Vial) => {
+    setEditingVial(vial);
+    setShowEditModal(true);
+  }, []);
+
+  const handleDeleteVial = useCallback(async (vialId: string) => {
+    try {
+      await firebaseCleanService.deleteVial(peptideId, vialId);
+      await refreshData();
+      AppHaptics.notificationSuccess();
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to delete vial');
+      AppHaptics.notificationError();
+    }
+  }, [peptideId, refreshData]);
+
+  const handleSaveVial = useCallback(async (vialId: string, updates: Partial<Vial>) => {
+    try {
+      await firebaseCleanService.updateVial(peptideId, vialId, updates);
+      await refreshData();
+      setShowEditModal(false);
+      setEditingVial(null);
+      AppHaptics.notificationSuccess();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update vial');
+      AppHaptics.notificationError();
+    }
+  }, [peptideId, refreshData]);
+
+  const handleRecalculateVial = useCallback(async (vialId: string, newTotalMcg: number, newBacWaterMl: number) => {
+    if (!peptide) return;
+    
+    try {
+      await firebaseCleanService.recalculateVialDoses(
+        peptideId, 
+        vialId, 
+        newTotalMcg, 
+        newBacWaterMl,
+        peptide.typicalDosageUnits
+      );
+      await refreshData();
+      setShowEditModal(false);
+      setEditingVial(null);
+      AppHaptics.notificationSuccess();
+    } catch (error) {
+      Alert.alert('Error', 'Failed to recalculate doses');
+      AppHaptics.notificationError();
+    }
+  }, [peptideId, peptide, refreshData]);
+
   if (loading || !peptide) {
     return (
       <View style={styles.loadingContainer}>
@@ -379,7 +433,13 @@ export default function PeptideDetailsScreen() {
               peptide.vials
                 .sort((a, b) => new Date(b.dateAdded).getTime() - new Date(a.dateAdded).getTime())
                 .map((vial) => (
-                  <VialHistoryCard key={vial.id} vial={vial} />
+                  <VialHistoryCard 
+                    key={vial.id} 
+                    vial={vial} 
+                    peptideId={peptideId}
+                    onEdit={handleEditVial}
+                    onDelete={handleDeleteVial}
+                  />
                 ))
             ) : (
               <Text style={styles.emptyText}>No vial history available</Text>
@@ -420,6 +480,18 @@ export default function PeptideDetailsScreen() {
           </>
         )}
       </View>
+      
+      {/* Edit Vial Modal */}
+      <EditVialModal
+        visible={showEditModal}
+        vial={editingVial}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingVial(null);
+        }}
+        onSave={handleSaveVial}
+        onRecalculate={handleRecalculateVial}
+      />
     </ScrollView>
   );
 }

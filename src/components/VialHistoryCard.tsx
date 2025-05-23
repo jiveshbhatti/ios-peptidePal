@@ -1,15 +1,19 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import * as Icon from 'react-native-feather';
 import { theme } from '@/constants/theme';
 import { Vial } from '@/types/peptide';
 import { format, parseISO, differenceInDays } from 'date-fns';
+import { AppHaptics } from '@/utils/haptics';
 
 interface VialHistoryCardProps {
   vial: Vial;
+  peptideId: string;
+  onEdit?: (vial: Vial) => void;
+  onDelete?: (vialId: string) => void;
 }
 
-export default function VialHistoryCard({ vial }: VialHistoryCardProps) {
+export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete }: VialHistoryCardProps) {
   const isExpired = vial.expirationDate ? new Date(vial.expirationDate) < new Date() : false;
   const isEmpty = vial.remainingAmountUnits <= 0;
   const usagePercentage = ((vial.initialAmountUnits - vial.remainingAmountUnits) / vial.initialAmountUnits) * 100;
@@ -41,13 +45,52 @@ export default function VialHistoryCard({ vial }: VialHistoryCardProps) {
     return <Icon.Circle stroke={getStatusColor()} width={16} height={16} />;
   };
 
+  const handleEdit = () => {
+    AppHaptics.buttonTap();
+    if (onEdit) {
+      onEdit(vial);
+    }
+  };
+
+  const handleDelete = () => {
+    AppHaptics.buttonTap();
+    Alert.alert(
+      'Delete Vial',
+      'Are you sure you want to delete this vial? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Delete', 
+          style: 'destructive',
+          onPress: () => {
+            if (onDelete) {
+              onDelete(vial.id);
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <View style={[styles.container, vial.isActive && styles.activeContainer]}>
       <View style={styles.header}>
-        <Text style={styles.vialName}>{vial.name || `Vial ${vial.id.slice(0, 8)}`}</Text>
-        <View style={styles.statusBadge}>
-          {getStatusIcon()}
-          <Text style={[styles.statusText, { color: getStatusColor() }]}>{getStatusText()}</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.vialName}>{vial.name || `Vial ${vial.id.slice(0, 8)}`}</Text>
+          <View style={styles.statusBadge}>
+            {getStatusIcon()}
+            <Text style={[styles.statusText, { color: getStatusColor() }]}>{getStatusText()}</Text>
+          </View>
+        </View>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
+            <Icon.Edit3 stroke={theme.colors.gray[600]} width={18} height={18} />
+          </TouchableOpacity>
+          {!vial.isActive && (
+            <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
+              <Icon.Trash2 stroke={theme.colors.error} width={18} height={18} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -119,6 +162,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: theme.spacing.md,
+  },
+  headerLeft: {
+    flex: 1,
+    gap: theme.spacing.xs,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    gap: theme.spacing.sm,
+    marginLeft: theme.spacing.sm,
+  },
+  actionButton: {
+    padding: theme.spacing.xs,
   },
   vialName: {
     fontSize: theme.typography.fontSize.base,

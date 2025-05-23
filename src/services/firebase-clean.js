@@ -556,6 +556,115 @@ const firebaseCleanService = {
       this._log('removeDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/${doseLogId}`, false);
       throw error;
     }
+  },
+
+  async updateVial(peptideId, vialId, updates) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Updating vial ${vialId} for peptide ${peptideId}...`);
+      
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      await updateDoc(vialRef, cleanObject(updates));
+      
+      this._log('updateVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, true);
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error updating vial ${vialId}:`, error);
+      this._log('updateVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
+      throw error;
+    }
+  },
+
+  async deleteVial(peptideId, vialId) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Deleting vial ${vialId} from peptide ${peptideId}...`);
+      
+      // Get the vial first to check if it's active
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      const vialSnap = await getDoc(vialRef);
+      
+      if (!vialSnap.exists()) {
+        throw new Error(`Vial ${vialId} not found`);
+      }
+      
+      const vialData = vialSnap.data();
+      if (vialData.isActive) {
+        throw new Error('Cannot delete an active vial');
+      }
+      
+      // Delete all dose logs associated with this vial
+      const doseLogsQuery = query(
+        collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS),
+        where('vialId', '==', vialId)
+      );
+      const doseLogsSnapshot = await getDocs(doseLogsQuery);
+      
+      // Delete each dose log
+      for (const doseLogDoc of doseLogsSnapshot.docs) {
+        await deleteDoc(doseLogDoc.ref);
+      }
+      
+      // Delete the vial
+      await deleteDoc(vialRef);
+      
+      // If this vial was activated from inventory, increment the stock back
+      const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      const inventorySnap = await getDoc(inventoryRef);
+      if (inventorySnap.exists()) {
+        const inventoryData = inventorySnap.data();
+        await updateDoc(inventoryRef, {
+          num_vials: inventoryData.num_vials + 1,
+          updated_at: serverTimestamp()
+        });
+      }
+      
+      this._log('deleteVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, true);
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error deleting vial ${vialId}:`, error);
+      this._log('deleteVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
+      throw error;
+    }
+  },
+
+  async recalculateVialDoses(peptideId, vialId, newTotalMcg, newBacWaterMl, typicalDoseMcg) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Recalculating doses for vial ${vialId}...`);
+      
+      // Calculate new initial doses based on new total mcg and typical dose
+      const newInitialDoses = Math.floor(newTotalMcg / typicalDoseMcg);
+      
+      // Get current dose logs count for this vial
+      const doseLogsQuery = query(
+        collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS),
+        where('vialId', '==', vialId)
+      );
+      const doseLogsSnapshot = await getDocs(doseLogsQuery);
+      const dosesUsed = doseLogsSnapshot.size;
+      const remainingDoses = Math.max(0, newInitialDoses - dosesUsed);
+      
+      // Update the vial with new values
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      await updateDoc(vialRef, {
+        totalPeptideInVialMcg: newTotalMcg,
+        reconstitutionBacWaterMl: newBacWaterMl,
+        initialAmountUnits: newInitialDoses,
+        remainingAmountUnits: remainingDoses,
+        notes: `Recalculated: ${newTotalMcg}mcg in ${newBacWaterMl}mL = ${newInitialDoses} doses`
+      });
+      
+      this._log('recalculateVialDoses', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, true);
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error recalculating vial doses:`, error);
+      this._log('recalculateVialDoses', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
+      throw error;
+    }
   }
 };
 
