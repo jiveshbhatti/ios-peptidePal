@@ -459,24 +459,25 @@ const firebaseCleanService = {
       // Generate a unique ID for both inventory and peptide entries
       const peptideId = doc(collection(firestoreDbClean, 'temp')).id;
       
-      // Create inventory entry
+      // Create inventory entry - clean undefined values
       const inventoryDocRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
-      await setDoc(inventoryDocRef, {
+      await setDoc(inventoryDocRef, cleanObject({
         ...inventoryData,
         id: peptideId,
+        low_stock_threshold: inventoryData.low_stock_threshold || 2, // Default to 2 if undefined
         created_at: serverTimestamp(),
         updated_at: serverTimestamp()
-      });
+      }));
       
       // Create corresponding peptide entry for scheduling
       const peptideDocRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
-      await setDoc(peptideDocRef, {
+      await setDoc(peptideDocRef, cleanObject({
         id: peptideId,
         name: inventoryData.name,
         strength: scheduleData.strength || '',
         typicalDosageUnits: scheduleData.typicalDosageUnits,
         dosageUnit: scheduleData.dosageUnit || 'mcg',
-        schedule: scheduleData.schedule,
+        schedule: cleanObject(scheduleData.schedule), // Clean nested object
         startDate: scheduleData.startDate || null,
         notes: scheduleData.notes || '',
         dataAiHint: scheduleData.dataAiHint || '',
@@ -484,7 +485,7 @@ const firebaseCleanService = {
         // Store initial doses info for future vial activation
         initialDosesPerVial: inventoryData.initial_doses_per_vial || 
           Math.floor(inventoryData.concentration_per_vial_mcg / inventoryData.typical_dose_mcg)
-      });
+      }));
       
       // Create an empty vials subcollection
       const vialsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS);
@@ -505,17 +506,17 @@ const firebaseCleanService = {
     try {
       if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Updating inventory peptide ${peptideId}...`);
       
-      // Update inventory entry
+      // Update inventory entry - clean undefined values
       const inventoryDocRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
-      await updateDoc(inventoryDocRef, {
+      await updateDoc(inventoryDocRef, cleanObject({
         ...inventoryUpdates,
         updated_at: serverTimestamp()
-      });
+      }));
       
       // Update peptide if schedule updates provided
       if (scheduleUpdates) {
         const peptideDocRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
-        await updateDoc(peptideDocRef, scheduleUpdates);
+        await updateDoc(peptideDocRef, cleanObject(scheduleUpdates));
       }
       
       this._log('updatePeptideInInventory', `${COLLECTION.INVENTORY_PEPTIDES}/${peptideId}`, true);
