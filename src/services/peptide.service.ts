@@ -76,43 +76,25 @@ export const peptideService = {
       vialId: activeVial.id,
     };
 
-    // Update vial remaining amount
-    const updatedVials = peptide.vials?.map(v => {
-      if (v.id === activeVial.id) {
-        // Use dose.dosage (correct field according to DoseLog interface) but fall back to dose.amount for backward compatibility
-        const amountToDeduct = dose.dosage || dose.amount || 0;
-        
-        // Calculate the units to deduct based on typical dose amount
-        // If typical dose is 300mcg and user logs 600mcg, we deduct 2 units from the vial
-        const typicalDose = peptide.typicalDosageUnits || 300;
-        const unitsToDeduct = Math.ceil(amountToDeduct / typicalDose);
-        
-        console.log(`Logging dose for ${peptide.name}: deducting ${unitsToDeduct} units (${amountToDeduct}${dose.unit}) from vial ${v.id} with current amount ${v.remainingAmountUnits}`);
-        
-        return {
-          ...v,
-          remainingAmountUnits: Math.max(0, v.remainingAmountUnits - unitsToDeduct),
-        };
-      }
-      return v;
-    });
-
-    // Add dose log and update vials - use camelCase keys for Supabase
+    // Simply add the dose log without updating remainingAmountUnits
+    // The remaining doses will be calculated from the dose logs
     const updates: any = {
       doseLogs: [...(peptide.doseLogs || []), newDoseLog],
-      vials: updatedVials,
     };
+
+    console.log(`Logging dose for ${peptide.name}: ${dose.dosage || (dose as any).amount || 0}${dose.unit || 'mcg'} for vial ${activeVial.id}`);
 
     const updatedPeptide = await this.updatePeptide(peptideId, updates);
     
     if (updatedPeptide) {
-      // Calculate total used doses (Vial.initialAmountUnits - Vial.remainingAmountUnits)
-      const activeVial = updatedPeptide.vials?.find(v => v.isActive);
-      if (activeVial) {
-        const usedDoses = Math.floor(activeVial.initialAmountUnits - activeVial.remainingAmountUnits);
-        // Update inventory peptide with usage tracking
-        await inventoryService.updatePeptideUsage(peptideId, usedDoses);
-      }
+      // Import the calculation function
+      const { calculateUsedDosesFromLogs } = await import('@/utils/dose-calculations');
+      
+      // Calculate total used doses from dose logs
+      const usedDoses = calculateUsedDosesFromLogs(updatedPeptide, activeVial.id);
+      
+      // Update inventory peptide with usage tracking
+      await inventoryService.updatePeptideUsage(peptideId, usedDoses);
     }
 
     return updatedPeptide;
@@ -134,47 +116,27 @@ export const peptideService = {
       return null;
     }
 
-    console.log(`Reverting dose log for ${peptide.name}, doseLog:`, doseLog);
-    console.log(`Current vials:`, peptide.vials);
+    console.log(`Removing dose log for ${peptide.name}, doseLog:`, doseLog);
 
-    // Find the vial and restore the amount
-    const updatedVials = peptide.vials?.map(v => {
-      if (v.id === doseLog.vialId) {
-        // Get the amount from the dose log (either amount or dosage field)
-        const doseAmount = doseLog.dosage || doseLog.amount || 0;
-        
-        // Calculate the units to restore based on typical dose amount
-        // If typical dose is 300mcg and log was 600mcg, we restore 2 units to the vial
-        const typicalDose = peptide.typicalDosageUnits || 300;
-        const unitsToRestore = Math.ceil(doseAmount / typicalDose);
-        
-        const newRemainingAmount = v.remainingAmountUnits + unitsToRestore;
-        console.log(`Reverting dose log for ${peptide.name}: restoring ${unitsToRestore} units (${doseAmount}${doseLog.unit || 'mcg'}) to vial ${v.id}, current amount ${v.remainingAmountUnits} -> new amount ${newRemainingAmount}`);
-        
-        return {
-          ...v,
-          remainingAmountUnits: newRemainingAmount,
-        };
-      }
-      return v;
-    });
-
-    console.log(`Updated vials after revert:`, updatedVials);
-
-    // Remove dose log - use camelCase keys for Supabase
+    // Simply remove the dose log without updating remainingAmountUnits
+    // The remaining doses will be calculated from the dose logs
     const updates: any = {
       doseLogs: peptide.doseLogs?.filter(log => log.id !== doseLogId),
-      vials: updatedVials,
     };
 
     const updated = await this.updatePeptide(peptideId, updates);
-    console.log(`Peptide after revert update:`, updated);
+    console.log(`Peptide after removing dose log:`, updated);
     
     if (updated) {
-      // Calculate total used doses (Vial.initialAmountUnits - Vial.remainingAmountUnits)
+      // Import the calculation function
+      const { calculateUsedDosesFromLogs } = await import('@/utils/dose-calculations');
+      
+      // Find the active vial
       const activeVial = updated.vials?.find(v => v.isActive);
       if (activeVial) {
-        const usedDoses = Math.floor(activeVial.initialAmountUnits - activeVial.remainingAmountUnits);
+        // Calculate total used doses from dose logs
+        const usedDoses = calculateUsedDosesFromLogs(updated, activeVial.id);
+        
         // Update inventory peptide with usage tracking
         await inventoryService.updatePeptideUsage(peptideId, usedDoses);
       }

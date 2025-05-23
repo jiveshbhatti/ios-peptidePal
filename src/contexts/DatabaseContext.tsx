@@ -19,6 +19,7 @@ export interface DatabaseService {
   getPeptides: typeof peptideService.getPeptides;
   getPeptideById: typeof peptideService.getPeptideById;
   addDoseLog: typeof peptideService.addDoseLog;
+  removeDoseLog?: (peptideId: string, doseLogId: string) => Promise<any>;
   getInventoryPeptides: () => Promise<any[]>;
   getInventoryBacWater?: () => Promise<any[]>;
   getInventorySyringes?: () => Promise<any[]>;

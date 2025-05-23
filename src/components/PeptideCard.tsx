@@ -17,6 +17,7 @@ import * as Icon from 'react-native-feather';
 import { theme } from '@/constants/theme';
 import { Peptide } from '@/types/peptide';
 import Card from '@/components/ui/Card';
+import { calculateRemainingDoses, formatDoseDisplay } from '@/utils/dose-calculations';
 
 interface PeptideCardProps {
   peptide: Peptide;
@@ -68,10 +69,9 @@ export default function PeptideCard({
     };
   });
   
-  // Calculate remaining doses from active vial
-  const activeVial = peptide.vials?.find(v => v.isActive);
-  const remainingDoses = activeVial?.remainingAmountUnits || 0;
-  const isLowStock = remainingDoses < 3;
+  // Calculate remaining doses using consistent logic
+  const remainingDoses = calculateRemainingDoses(peptide);
+  const doseDisplay = formatDoseDisplay(remainingDoses);
 
   return (
     <Animated.View style={animatedStyle}>
@@ -110,9 +110,9 @@ export default function PeptideCard({
           <Text style={[styles.schedule, isLogged && styles.loggedSubText]}>
             {scheduleTime} • {peptide.typicalDosageUnits}{peptide.dosageUnit}
           </Text>
-          {activeVial && (
-            <Text style={[styles.status, isLowStock && styles.lowStock, isLogged && styles.loggedSubText]}>
-              {remainingDoses} doses left
+          {remainingDoses > 0 && (
+            <Text style={[styles.status, doseDisplay.isLowStock && styles.lowStock, isLogged && styles.loggedSubText]}>
+              {doseDisplay.text}
             </Text>
           )}
         </View>

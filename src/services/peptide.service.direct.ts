@@ -16,18 +16,30 @@ export const peptideServiceDirect = {
     dose: Omit<DoseLog, 'id'>
   ): Promise<Peptide | null> {
     try {
+      // Validate peptideId
+      if (!peptideId) {
+        console.error('DIRECT: No peptideId provided to addDoseLogMultiStep');
+        return null;
+      }
+      
       // Get the Supabase client
       const supabase = getSupabaseClient();
       
       // Get the current peptide data
+      console.log(`DIRECT: Fetching peptide with ID: ${peptideId}`);
       const { data: peptide, error: fetchError } = await supabase
         .from('peptides')
         .select('*')
         .eq('id', peptideId)
-        .single();
+        .maybeSingle(); // Use maybeSingle() instead of single() to handle no rows gracefully
         
       if (fetchError) {
         console.error('Error fetching peptide:', fetchError);
+        return null;
+      }
+      
+      if (!peptide) {
+        console.error(`No peptide found with ID: ${peptideId}`);
         return null;
       }
       
@@ -74,17 +86,17 @@ export const peptideServiceDirect = {
         return null;
       }
       
-      // STEP 2: Update the dose logs - ALWAYS use camelCase directly
-      console.log('DIRECT: Step 2 - Updating dose logs with camelCase column names');
+      // STEP 2: Update the dose logs - use lowercase as confirmed by testing
+      console.log('DIRECT: Step 2 - Updating dose logs with lowercase column names');
       
       // Use doselogs or doseLogs property depending on what's available in the peptide
       const currentDoseLogs = peptide.doseLogs || peptide.doselogs || [];
       const updatedDoseLogs = [...currentDoseLogs, newDoseLog];
       
-      // Always use camelCase for updates since that's what the table definition uses
+      // Use lowercase for updates as confirmed by testing
       const { error: logsError } = await supabase
         .from('peptides')
-        .update({ "doseLogs": updatedDoseLogs })
+        .update({ "doselogs": updatedDoseLogs })
         .eq('id', peptideId);
         
       if (logsError) {
@@ -97,10 +109,15 @@ export const peptideServiceDirect = {
         .from('peptides')
         .select('*')
         .eq('id', peptideId)
-        .single();
+        .maybeSingle(); // Use maybeSingle() to handle no rows gracefully
         
       if (getError) {
         console.error('DIRECT: Error getting updated peptide:', getError);
+        return null;
+      }
+      
+      if (!updatedPeptide) {
+        console.error(`DIRECT: No peptide found after update with ID: ${peptideId}`);
         return null;
       }
       

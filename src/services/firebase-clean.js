@@ -13,7 +13,8 @@ import {
   getDoc, 
   setDoc, 
   addDoc, 
-  updateDoc, 
+  updateDoc,
+  deleteDoc, 
   query, 
   where, 
   orderBy,
@@ -69,6 +70,17 @@ const timestampToString = (timestamp) => {
     return timestamp.toDate().toISOString();
   }
   return timestamp;
+};
+
+// Helper to clean object by removing undefined values
+const cleanObject = (obj) => {
+  const cleaned = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned;
 };
 
 // Firebase service with properly initialized Firestore references
@@ -203,24 +215,43 @@ const firebaseCleanService = {
   async addDoseLog(peptideId, doseLog) {
     try {
       if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Adding dose log to peptide ${peptideId}...`);
+      console.log(`[Firebase Clean] Dose log data:`, doseLog);
       
-      // Get the peptide document
-      const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
-      const peptideDoc = await getDoc(peptideRef);
+      // Get the full peptide document with vials
+      const peptide = await this.getPeptideById(peptideId);
       
-      if (!peptideDoc.exists()) {
+      if (!peptide) {
         throw new Error(`Peptide ${peptideId} not found`);
       }
       
-      // Add to doseLogs collection - use camelCase as verified in inspection
-      const doseLogsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS);
-      const doseLogRef = await addDoc(doseLogsCollection, {
+      // Find the active vial
+      const activeVial = peptide.vials?.find(v => v.isActive);
+      if (!activeVial) {
+        console.error('[Firebase Clean] No active vial found');
+        throw new Error('No active vial found for this peptide');
+      }
+      
+      // Create new dose log with vialId, cleaning out undefined values
+      // Don't include an 'id' field - Firebase will generate the document ID
+      const newDoseLog = cleanObject({
         ...doseLog,
-        timestamp: serverTimestamp()
+        vialId: activeVial.id,
+        timestamp: serverTimestamp(),
+        // Ensure date is stored as string, not as a timestamp
+        date: doseLog.date
       });
       
+      console.log(`[Firebase Clean] Logging dose: ${doseLog.dosage || doseLog.amount}${doseLog.unit || 'mcg'} for vial ${activeVial.id}`);
+      
+      // Simply add the dose log without updating remainingAmountUnits
+      // The remaining doses will be calculated from the dose logs
+      const doseLogsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS);
+      const doseLogRef = await addDoc(doseLogsCollection, newDoseLog);
+      
       this._log('addDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/*`, true);
-      return doseLogRef.id;
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
     } catch (error) {
       console.error(`[Firebase Clean] Error adding dose log to peptide ${peptideId}:`, error);
       this._log('addDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/*`, false);
@@ -331,6 +362,82 @@ const firebaseCleanService = {
       console.error('[Firebase Clean] Error fetching other items inventory:', error);
       this._log('getInventoryOtherItems', COLLECTION.INVENTORY_OTHER_ITEMS + '/*', false);
       return [];
+    }
+  },
+  
+  async updatePeptide(peptideId, updates) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Updating peptide ${peptideId}...`);
+      
+      const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+      await updateDoc(peptideRef, cleanObject({
+        ...updates,
+        updatedAt: serverTimestamp()
+      }));
+      
+      this._log('updatePeptide', `${COLLECTION.PEPTIDES}/${peptideId}`, true);
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error updating peptide ${peptideId}:`, error);
+      this._log('updatePeptide', `${COLLECTION.PEPTIDES}/${peptideId}`, false);
+      throw error;
+    }
+  },
+  
+  async activateVial(peptideId, vialId) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Activating vial ${vialId} for peptide ${peptideId}...`);
+      
+      // Get all vials for this peptide
+      const vialsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS);
+      const vialsSnapshot = await getDocs(vialsCollection);
+      
+      // Update all vials - deactivate all except the selected one
+      const updatePromises = vialsSnapshot.docs.map(vialDoc => {
+        const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialDoc.id);
+        return updateDoc(vialRef, {
+          isActive: vialDoc.id === vialId
+        });
+      });
+      
+      await Promise.all(updatePromises);
+      
+      this._log('activateVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, true);
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error activating vial ${vialId}:`, error);
+      this._log('activateVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
+      throw error;
+    }
+  },
+  
+  async removeDoseLog(peptideId, doseLogId) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Removing dose log ${doseLogId} from peptide ${peptideId}...`);
+      
+      // Get the dose log to find the vialId
+      const doseLogRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS, doseLogId);
+      const doseLogSnap = await getDoc(doseLogRef);
+      
+      if (!doseLogSnap.exists()) {
+        throw new Error(`Dose log ${doseLogId} not found`);
+      }
+      
+      const doseLogData = doseLogSnap.data();
+      console.log(`[Firebase Clean] Removing dose log:`, doseLogData);
+      
+      // Simply delete the dose log without updating remainingAmountUnits
+      // The remaining doses will be calculated from the dose logs
+      await deleteDoc(doseLogRef);
+      
+      this._log('removeDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/${doseLogId}`, true);
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error removing dose log ${doseLogId}:`, error);
+      this._log('removeDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/${doseLogId}`, false);
+      throw error;
     }
   }
 };

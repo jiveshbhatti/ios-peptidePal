@@ -43,12 +43,16 @@ export default function SuccessAnimation({
       checkmarkProgress.value = withDelay(
         200,
         withTiming(1, { duration: 500 }, () => {
+          'worklet';
           // Hide after animation completes with a delay
-          setTimeout(() => {
-            opacity.value = withTiming(0, { duration: 300 }, () => {
-              runOnJS(onComplete)();
-            });
-          }, 800);
+          runOnJS(() => {
+            setTimeout(() => {
+              opacity.value = withTiming(0, { duration: 300 }, () => {
+                'worklet';
+                runOnJS(onComplete)();
+              });
+            }, 800);
+          })();
         })
       );
     }

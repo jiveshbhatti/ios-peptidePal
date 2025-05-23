@@ -2,17 +2,18 @@ import { getSupabaseClient } from './supabase-dynamic';
 import { Peptide, DoseLog, Vial } from '@/types/peptide';
 import { getStoredPeptides, storePeptides } from '@/utils/storage';
 import { config } from '../config';
+import { inventoryService } from './inventory.service';
 
 // Determine which column naming style to use based on environment
 console.log(`DETECTING ENVIRONMENT: isProduction=${config.isProduction}, isDevelopment=${config.isDevelopment}, supabase.label=${config.supabase.label}`);
 
-// IMPORTANT: After actual table inspection, we found that the database uses camelCase
-// column names in the table definition, but has inconsistent schema cache behavior
+// IMPORTANT: After actual table inspection, we found that the database uses lowercase
+// column names despite what the schema might suggest
 const columnNames = {
-  doseLogs: 'doseLogs',          // Use actual camelCase as in table definition
-  typicalDosageUnits: 'typicalDosageUnits',
-  dataAiHint: 'dataAiHint',
-  startDate: 'startDate'
+  doseLogs: 'doselogs',          // Use lowercase as confirmed by testing
+  typicalDosageUnits: 'typicaldosageunits',
+  dataAiHint: 'dataaihint',
+  startDate: 'startdate'
 };
 
 console.log(`Using column names: ${JSON.stringify(columnNames)}`);
@@ -98,10 +99,15 @@ export const peptideService = {
       .from('peptides')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle(); // Use maybeSingle() to handle no rows gracefully
 
     if (error) {
       console.error('Error fetching peptide:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.error(`No peptide found with ID: ${id}`);
       return null;
     }
 
@@ -120,10 +126,15 @@ export const peptideService = {
       .update(updates)
       .eq('id', id)
       .select()
-      .single();
+      .maybeSingle(); // Use maybeSingle() to handle no rows gracefully
 
     if (error) {
       console.error('Error updating peptide:', error);
+      return null;
+    }
+
+    if (!data) {
+      console.error(`No peptide returned after update with ID: ${id}`);
       return null;
     }
 
@@ -138,6 +149,12 @@ export const peptideService = {
     peptideId: string,
     dose: Omit<DoseLog, 'id'>
   ): Promise<Peptide | null> {
+    // Validate peptideId
+    if (!peptideId) {
+      console.error('No peptideId provided to addDoseLog');
+      return null;
+    }
+    
     const peptide = await this.getPeptideById(peptideId);
     if (!peptide) return null;
 
@@ -182,7 +199,7 @@ export const peptideService = {
     };
     
     // Use lowercase column names as that's what works in the database
-    updates[columnNames.doseLogs] = [...(peptide.doseLogs || []), newDoseLog];
+    updates[columnNames.doseLogs] = [...(peptide.doseLogs || peptide.doselogs || []), newDoseLog];
     
     // Log detailed update information
     console.log(`Using column name '${columnNames.doseLogs}' for dose logs`);
@@ -193,7 +210,15 @@ export const peptideService = {
     // Our testing shows that including both camelCase and lowercase column names
     // in the same update causes the database to fail with schema cache errors
 
-    return this.updatePeptide(peptideId, updates);
+    const updatedPeptide = await this.updatePeptide(peptideId, updates);
+    
+    // Sync usage tracking to inventory for consistency
+    if (updatedPeptide) {
+      const totalDoseLogs = updatedPeptide.doseLogs?.length || updatedPeptide.doselogs?.length || 0;
+      await inventoryService.updatePeptideUsage(peptideId, totalDoseLogs);
+    }
+    
+    return updatedPeptide;
   },
 
   async removeDoseLog(
@@ -212,37 +237,14 @@ export const peptideService = {
       return null;
     }
 
-    console.log(`Reverting dose log for ${peptide.name}, doseLog:`, doseLog);
+    console.log(`Removing dose log for ${peptide.name}, doseLogId: ${doseLogId}`);
 
-    // Find the vial and restore the amount
-    const updatedVials = peptide.vials?.map(v => {
-      if (v.id === doseLog.vialId) {
-        // Get the amount from the dose log (either amount or dosage field)
-        const doseAmount = doseLog.dosage || doseLog.amount || 0;
-        
-        // Calculate the units to restore based on typical dose amount
-        // If typical dose is 300mcg and log was 600mcg, we restore 2 units to the vial
-        const typicalDose = peptide.typicalDosageUnits || 300;
-        const unitsToRestore = Math.ceil(doseAmount / typicalDose);
-        
-        const newRemainingAmount = v.remainingAmountUnits + unitsToRestore;
-        console.log(`Reverting dose log for ${peptide.name}: restoring ${unitsToRestore} units (${doseAmount}${doseLog.unit || 'mcg'}) to vial ${v.id}, current amount ${v.remainingAmountUnits} -> new amount ${newRemainingAmount}`);
-        
-        return {
-          ...v,
-          remainingAmountUnits: newRemainingAmount,
-        };
-      }
-      return v;
-    });
-
-    // Remove dose log - use correct column name for current environment
-    const updates: any = {
-      vials: updatedVials,
-    };
+    // Simply remove the dose log without updating remainingAmountUnits
+    // The remaining doses will be calculated from the dose logs
+    const updates: any = {};
     
     // Use lowercase column names as that's what works in the database
-    updates[columnNames.doseLogs] = peptide.doseLogs?.filter(log => log.id !== doseLogId);
+    updates[columnNames.doseLogs] = (peptide.doseLogs || peptide.doselogs)?.filter(log => log.id !== doseLogId);
     
     // Log detailed update information for debugging
     console.log(`Using column name '${columnNames.doseLogs}' for dose log removal`);
@@ -255,6 +257,23 @@ export const peptideService = {
 
     const updated = await this.updatePeptide(peptideId, updates);
     console.log(`Peptide after revert update:`, updated);
+    
+    // Sync usage tracking to inventory for consistency
+    if (updated) {
+      // Import the calculation function
+      const { calculateUsedDosesFromLogs } = await import('@/utils/dose-calculations');
+      
+      // Find the active vial
+      const activeVial = updated.vials?.find(v => v.isActive);
+      if (activeVial) {
+        // Calculate total used doses from dose logs
+        const usedDoses = calculateUsedDosesFromLogs(updated, activeVial.id);
+        
+        // Update inventory peptide with usage tracking
+        await inventoryService.updatePeptideUsage(peptideId, usedDoses);
+      }
+    }
+    
     return updated;
   },
 

@@ -3,6 +3,7 @@ import { Peptide } from '@/types/peptide';
 import { InventoryPeptide, InventoryBacWater, InventorySyringe, InventoryOtherItem } from '@/types/inventory';
 import { getSupabaseClient } from '@/services/supabase-dynamic';
 import { useDatabase } from './DatabaseContext';
+import firebaseRealtimeService from '@/services/firebase-realtime';
 
 interface DataContextType {
   peptides: Peptide[];
@@ -35,8 +36,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       setError(null);
 
       if (useFirebase) {
-        // Firebase data fetching
-        const peptideData = await service.getPeptides();
+        // For initial load, fetch data once
+        const peptideData = await firebaseRealtimeService.getPeptides();
         const inventoryData = await service.getInventoryPeptides();
         
         // Set states
@@ -87,30 +88,86 @@ export function DataProvider({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    fetchData();
+    let unsubscribeFunctions: (() => void)[] = [];
 
-    // Set up polling for data updates instead of real-time subscriptions
-    // This is a simpler approach that works reliably
-    const pollingInterval = setInterval(fetchData, 30000); // Poll every 30 seconds
-    
+    if (useFirebase) {
+      // Use real-time subscriptions for Firebase
+      console.log('Setting up Firebase real-time subscriptions...');
+      
+      // Subscribe to peptides
+      const unsubscribePeptides = firebaseRealtimeService.subscribeToPeptides((updatedPeptides) => {
+        console.log('Peptides updated via real-time subscription:', updatedPeptides.length);
+        setPeptides(updatedPeptides);
+        setLoading(false);
+      });
+      unsubscribeFunctions.push(unsubscribePeptides);
+      
+      // Subscribe to all inventory collections
+      const unsubscribeInventory = firebaseRealtimeService.subscribeToAllInventory({
+        onPeptides: (items) => {
+          console.log('Inventory peptides updated:', items.length);
+          setInventoryPeptides(items);
+        },
+        onBacWater: (items) => {
+          console.log('Bac water inventory updated:', items.length);
+          setBacWater(items);
+        },
+        onSyringes: (items) => {
+          console.log('Syringes inventory updated:', items.length);
+          setSyringes(items);
+        },
+        onOtherItems: (items) => {
+          console.log('Other items inventory updated:', items.length);
+          setOtherItems(items);
+        }
+      });
+      unsubscribeFunctions.push(unsubscribeInventory);
+      
+      // Do an initial fetch for inventory (until real-time is fully implemented)
+      service.getInventoryPeptides().then(setInventoryPeptides).catch(console.error);
+      
+    } else {
+      // For Supabase, continue with initial fetch and polling
+      fetchData();
+      
+      // Set up polling for Supabase
+      const pollingInterval = setInterval(fetchData, 30000); // Poll every 30 seconds
+      unsubscribeFunctions.push(() => clearInterval(pollingInterval));
+    }
+
+    // Cleanup function
     return () => {
-      clearInterval(pollingInterval);
+      console.log('Cleaning up DataContext subscriptions...');
+      unsubscribeFunctions.forEach(fn => fn());
+      firebaseRealtimeService.cleanup();
     };
-  }, []);
+  }, [useFirebase]); // Re-run when database changes
+
+  const refreshData = async () => {
+    console.log('Manual data refresh requested');
+    if (useFirebase) {
+      // For Firebase, the real-time subscriptions will handle updates
+      // Just do a manual fetch to ensure latest data
+      await fetchData();
+    } else {
+      // For Supabase, do a full refresh
+      await fetchData();
+    }
+  };
+
+  const contextValue: DataContextType = {
+    peptides,
+    inventoryPeptides,
+    bacWater,
+    syringes,
+    otherItems,
+    loading,
+    error,
+    refreshData,
+  };
 
   return (
-    <DataContext.Provider
-      value={{
-        peptides,
-        inventoryPeptides,
-        bacWater,
-        syringes,
-        otherItems,
-        loading,
-        error,
-        refreshData: fetchData,
-      }}
-    >
+    <DataContext.Provider value={contextValue}>
       {children}
     </DataContext.Provider>
   );
@@ -118,7 +175,7 @@ export function DataProvider({ children }: { children: ReactNode }) {
 
 export function useData() {
   const context = useContext(DataContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error('useData must be used within a DataProvider');
   }
   return context;

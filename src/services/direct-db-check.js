@@ -107,7 +107,7 @@ export async function checkDbColumnNames() {
         .from('peptides')
         .select('*')
         .eq('id', testId)
-        .single();
+        .maybeSingle();
         
       if (testError) {
         console.log("❌ Failed to fetch test peptide:", testError.message);
@@ -164,7 +164,7 @@ export async function tryUpdateColumn(peptideId, columnName, value) {
       .from('peptides')
       .select('*')
       .eq('id', peptideId)
-      .single();
+      .maybeSingle();
       
     if (selectError) {
       console.log(`❌ Could not fetch peptide ${peptideId}:`, selectError.message);

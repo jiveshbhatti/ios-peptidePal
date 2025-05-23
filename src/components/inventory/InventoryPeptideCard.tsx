@@ -10,16 +10,20 @@ import {
 import * as Icon from 'react-native-feather';
 import { theme } from '@/constants/theme';
 import { InventoryPeptide } from '@/types/inventory';
+import { Peptide } from '@/types/peptide';
 import Card from '@/components/ui/Card';
+import { calculateRemainingDoses, calculateUsedDoses, calculateTotalDosesPerVial } from '@/utils/dose-calculations';
 
 interface InventoryPeptideCardProps {
   peptide: InventoryPeptide;
+  schedulePeptide?: Peptide; // Optional associated Peptide for accurate dose tracking
   onPress: () => void;
   onLongPress?: () => void;
 }
 
 export default function InventoryPeptideCard({
   peptide,
+  schedulePeptide,
   onPress,
   onLongPress,
 }: InventoryPeptideCardProps) {
@@ -32,52 +36,27 @@ export default function InventoryPeptideCard({
   const hasStock = peptide.num_vials > 0;
   const isLowStock = peptide.num_vials <= (peptide.low_stock_threshold || 2);
   
-  // Calculate remaining doses percentage if active vial
-  const calculateRemainingPercentage = () => {
-    if (!isActiveVial || 
-        !peptide.concentration_per_vial_mcg || 
-        !peptide.typical_dose_mcg ||
-        peptide.typical_dose_mcg === 0) {
-      return 0;
-    }
-    
-    const totalDoses = Math.floor(peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg);
-    
-    // Check for usage tracking info in batch_number field
-    let usedDoses = 0;
-    if (peptide.batch_number && peptide.batch_number.startsWith('USAGE:')) {
-      try {
-        const usageString = peptide.batch_number.split('USAGE:')[1];
-        usedDoses = parseInt(usageString, 10);
-        console.log(`Found usage info for ${peptide.name}: ${usedDoses} doses used out of ${totalDoses}`);
-        
-        // Calculate percentage based on actual usage
-        const remainingDoses = Math.max(0, totalDoses - usedDoses);
-        const actualPercentage = (remainingDoses / totalDoses) * 100;
-        return actualPercentage;
-      } catch (error) {
-        console.error('Error parsing usage info from batch_number:', error);
-        // Fall back to time-based method if parsing fails
-      }
-    }
-    
-    // Fallback: Estimate remaining doses based on active vial status and reconstitution date
-    const reconDate = peptide.active_vial_reconstitution_date ? new Date(peptide.active_vial_reconstitution_date) : null;
-    const expiryDate = peptide.active_vial_expiry_date ? new Date(peptide.active_vial_expiry_date) : null;
-    
-    if (!reconDate || !expiryDate) return 50; // Default to 50% if dates not available
-    
-    const today = new Date();
-    const totalDurationMs = expiryDate.getTime() - reconDate.getTime();
-    const elapsedDurationMs = today.getTime() - reconDate.getTime();
-    
-    // Calculate percentage based on time elapsed (simple linear approximation)
-    // For a more accurate calculation, we'd need actual dose logs
-    const timeBasedPercentage = Math.max(0, 100 - (elapsedDurationMs / totalDurationMs * 100));
-    return timeBasedPercentage;
-  };
+  // Calculate doses using the unified calculation logic
+  const remainingDoses = calculateRemainingDoses(schedulePeptide, peptide);
+  const usedDoses = calculateUsedDoses(schedulePeptide, peptide);
+  const totalDoses = calculateTotalDosesPerVial(
+    peptide.concentration_per_vial_mcg,
+    peptide.typical_dose_mcg
+  );
   
-  const remainingPercentage = calculateRemainingPercentage();
+  // Debug logging for Glow
+  if (peptide.name === 'Glow') {
+    console.log('Inventory Glow calculations:', {
+      remainingDoses,
+      usedDoses,
+      totalDoses,
+      hasSchedulePeptide: !!schedulePeptide,
+      activeVialId: schedulePeptide?.vials?.find(v => v.isActive)?.id
+    });
+  }
+  
+  // Calculate percentage for progress bar
+  const remainingPercentage = totalDoses > 0 ? (remainingDoses / totalDoses) * 100 : 0;
   
   // Determine status color
   let statusColor = theme.colors.gray[400]; // Default inactive
@@ -147,29 +126,11 @@ export default function InventoryPeptideCard({
                 />
               </View>
               <Text style={styles.progressText}>
-                {(() => {
-                  // Always calculate total doses and show dose count if we have the necessary data
-                  if (peptide.concentration_per_vial_mcg && peptide.typical_dose_mcg) {
-                    const totalDoses = Math.floor(peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg);
-                    
-                    // If we have explicit usage data, use it
-                    if (peptide.batch_number && peptide.batch_number.startsWith('USAGE:')) {
-                      const usedDoses = parseInt(peptide.batch_number.split('USAGE:')[1], 10);
-                      const remainingDoses = Math.max(0, totalDoses - usedDoses);
-                      return `${usedDoses} doses used / ${remainingDoses} remaining`;
-                    } 
-                    // Otherwise, estimate based on percentage
-                    else {
-                      const estimatedUsedDoses = Math.floor(totalDoses * (1 - remainingPercentage / 100));
-                      const estimatedRemainingDoses = Math.max(0, totalDoses - estimatedUsedDoses);
-                      return `~${estimatedUsedDoses} doses used / ${estimatedRemainingDoses} remaining`;
-                    }
-                  } 
-                  // Fallback to original message if we can't calculate
-                  else {
-                    return remainingPercentage < 25 ? 'Low remaining in active vial' : 'Active vial in use';
-                  }
-                })()}
+                {totalDoses > 0 ? (
+                  `${usedDoses} doses used / ${remainingDoses} remaining`
+                ) : (
+                  remainingPercentage < 25 ? 'Low remaining in active vial' : 'Active vial in use'
+                )}
               </Text>
             </View>
           )}

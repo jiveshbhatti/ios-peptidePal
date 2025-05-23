@@ -14,6 +14,7 @@ import {
 import { theme } from '@/constants/theme';
 import { Peptide } from '@/types/peptide';
 import * as dateUtils from '@/utils/date';
+import { calculateRemainingDoses } from '@/utils/dose-calculations';
 
 interface DoseLogModalProps {
   visible: boolean;
@@ -52,8 +53,8 @@ export default function DoseLogModal({
   if (!peptide) return null;
 
   const activeVial = peptide.vials?.find(v => v.isActive);
-  const remainingDoses = activeVial?.remainingAmountUnits || 0;
-  const isLowStock = remainingDoses < 3;
+  const remainingDoses = calculateRemainingDoses(peptide);
+  const isLowStock = remainingDoses > 0 && remainingDoses < 3;
 
   const handleLog = () => {
     const doseAmount = parseFloat(amount);
@@ -84,12 +85,18 @@ export default function DoseLogModal({
     }
     */
 
-    onLog({
+    const logData: any = {
       amount: doseAmount,
       dosage: doseAmount, // Add dosage field to match DoseLog interface
       unit,
-      notes: notes.trim() || undefined,
-    });
+    };
+    
+    // Only add notes if it has content
+    if (notes.trim()) {
+      logData.notes = notes.trim();
+    }
+    
+    onLog(logData);
 
     // Reset form
     setNotes('');

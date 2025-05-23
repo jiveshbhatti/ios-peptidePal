@@ -11,9 +11,11 @@ import {
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
+import { useDatabase } from '@/contexts/DatabaseContext';
 import Calendar from '@/components/Calendar';
-import PeptideCard from '@/components/PeptideCard';
+import SwipeablePeptideCard from '@/components/SwipeablePeptideCard';
 import { Peptide, DoseLog } from '@/types/peptide';
+import { AppHaptics } from '@/utils/haptics';
 import * as dateUtils from '@/utils/date';
 import { peptideService } from '@/services/peptide.service.adaptive';
 import { peptideServiceDirect } from '@/services/peptide.service.direct';
@@ -26,6 +28,7 @@ import DatabaseSwitcher from '@/components/DatabaseSwitcher';
 
 export default function HomeScreen() {
   const { peptides, loading, refreshData } = useData();
+  const { service, useFirebase } = useDatabase();
   const [selectedDate, setSelectedDate] = useState(new Date());
   
   // Run column name check on component mount
@@ -99,23 +102,54 @@ export default function HomeScreen() {
     return peptide.doseLogs.some(log => {
       // Handle both date and loggedAt field names for backward compatibility
       const logDate = log.date || log.loggedAt;
-      return logDate && dateUtils.isSameDay(new Date(logDate), selectedDate) && 
-        log.timeOfDay === time;
+      if (!logDate) return false;
+      
+      // Compare dates and times - ensure we're checking the right fields
+      const logDateObj = new Date(logDate);
+      const isSameDay = dateUtils.isSameDay(logDateObj, selectedDate);
+      const isSameTime = log.timeOfDay === time;
+      
+      return isSameDay && isSameTime;
     });
   };
 
-  // Find dose log ID for a specific peptide, date, and time
-  const findDoseLogId = (peptideId: string, time: 'AM' | 'PM'): string | null => {
+  // Find dose log for a specific peptide, date, and time
+  // This method now returns the actual dose log object for more flexibility
+  const findDoseLog = (peptideId: string, time: 'AM' | 'PM'): DoseLog | null => {
     const peptide = peptides.find(p => p.id === peptideId);
-    if (!peptide || !peptide.doseLogs) return null;
+    if (!peptide || !peptide.doseLogs) {
+      console.log(`findDoseLog: No peptide or doseLogs for ${peptideId}`);
+      return null;
+    }
+
+    console.log(`findDoseLog: Searching for dose log on ${selectedDate.toISOString()} ${time}`);
+    console.log(`findDoseLog: Available dose logs:`, peptide.doseLogs.map(log => ({
+      id: log.id,
+      date: log.date || log.loggedAt,
+      timeOfDay: log.timeOfDay,
+      peptideId: peptideId
+    })));
 
     const doseLog = peptide.doseLogs.find(log => {
       // Handle both date and loggedAt field names for backward compatibility
       const logDate = log.date || log.loggedAt;
-      return logDate && dateUtils.isSameDay(new Date(logDate), selectedDate) && 
-        log.timeOfDay === time;
+      if (!logDate) return false;
+      
+      // Compare dates and times
+      const logDateObj = new Date(logDate);
+      const isSameDay = dateUtils.isSameDay(logDateObj, selectedDate);
+      const isSameTime = log.timeOfDay === time;
+      
+      return isSameDay && isSameTime;
     });
 
+    console.log(`findDoseLog: Found dose log:`, doseLog ? doseLog.id : 'none');
+    return doseLog || null;
+  };
+
+  // Helper to get dose log ID
+  const findDoseLogId = (peptideId: string, time: 'AM' | 'PM'): string | null => {
+    const doseLog = findDoseLog(peptideId, time);
     return doseLog ? doseLog.id : null;
   };
 
@@ -187,12 +221,16 @@ export default function HomeScreen() {
 
   // Handle reverting a logged dose
   const handleRevertDose = async (peptideId: string, time: 'AM' | 'PM') => {
-    // Find the dose log ID
-    const doseLogId = findDoseLogId(peptideId, time);
-    if (!doseLogId) {
+    // Find the dose log using the enhanced method
+    const doseLog = findDoseLog(peptideId, time);
+    if (!doseLog || !doseLog.id) {
+      console.error(`Cannot find dose log for peptide ${peptideId} at ${selectedDate.toISOString()} ${time}`);
       Alert.alert('Error', 'Could not find the dose log to revert');
       return;
     }
+    
+    const doseLogId = doseLog.id;
+    console.log(`Attempting to revert dose log ${doseLogId} for peptide ${peptideId}`);
 
     // Ask for confirmation
     Alert.alert(
@@ -208,7 +246,17 @@ export default function HomeScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await peptideService.removeDoseLog(peptideId, doseLogId);
+              if (useFirebase) {
+                // Use Firebase service from context
+                console.log("Using Firebase service for dose removal");
+                if (service.removeDoseLog) {
+                  await service.removeDoseLog(peptideId, doseLogId);
+                } else {
+                  throw new Error('Firebase service does not support dose log removal');
+                }
+              } else {
+                await peptideService.removeDoseLog(peptideId, doseLogId);
+              }
               
               // Show success message
               setSuccessMessage('Dose log successfully reverted');
@@ -248,8 +296,10 @@ export default function HomeScreen() {
     console.log(`Column name test result: lowercase='doselogs' works=${lowerCaseWorks}`);
     
     // Store the result in global app state for future reference
-    window.PeptidePalConfig = window.PeptidePalConfig || {};
-    window.PeptidePalConfig.useLowerCase = lowerCaseWorks;
+    // @ts-ignore - Using global for React Native compatibility
+    global.PeptidePalConfig = global.PeptidePalConfig || {};
+    // @ts-ignore
+    global.PeptidePalConfig.useLowerCase = lowerCaseWorks;
     
     // Make sure we have the latest peptide data before showing the modal
     const refreshedPeptides = await peptideService.getPeptides();
@@ -324,7 +374,7 @@ export default function HomeScreen() {
           </View>
         ) : (
           scheduledPeptides.map(({ peptide, time }) => (
-            <PeptideCard
+            <SwipeablePeptideCard
               key={`${peptide.id}-${time}`}
               peptide={peptide}
               scheduleTime={time}
@@ -354,31 +404,40 @@ export default function HomeScreen() {
               date: selectedDate.toISOString(), // Use the date field from the schema
               timeOfDay: selectedTime,
               notes: dose.notes,
+              peptideId: selectedPeptide.id, // Include peptideId for better tracking
             };
             
             let success = false;
             
-            // First try the direct multi-step approach which is most reliable
-            console.log("Trying direct multi-step approach first");
-            const directResult = await peptideServiceDirect.addDoseLogMultiStep(
-              selectedPeptide.id, 
-              doseData
-            );
-            
-            if (directResult) {
-              console.log("Direct multi-step approach succeeded!");
+            if (useFirebase) {
+              // Use Firebase service from context
+              console.log("Using Firebase service for dose logging");
+              await service.addDoseLog(selectedPeptide.id, doseData);
               success = true;
             } else {
-              // Fall back to the standard approach
-              console.log("Falling back to standard approach");
-              const standardResult = await peptideService.addDoseLog(
+              // Use Supabase services
+              // First try the direct multi-step approach which is most reliable
+              console.log("Trying direct multi-step approach first");
+              const directResult = await peptideServiceDirect.addDoseLogMultiStep(
                 selectedPeptide.id, 
                 doseData
               );
               
-              if (standardResult) {
-                console.log("Standard approach succeeded!");
+              if (directResult) {
+                console.log("Direct multi-step approach succeeded!");
                 success = true;
+              } else {
+                // Fall back to the standard approach
+                console.log("Falling back to standard approach");
+                const standardResult = await peptideService.addDoseLog(
+                  selectedPeptide.id, 
+                  doseData
+                );
+                
+                if (standardResult) {
+                  console.log("Standard approach succeeded!");
+                  success = true;
+                }
               }
             }
             
@@ -388,7 +447,7 @@ export default function HomeScreen() {
               setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
               setShowSuccessAnimation(true);
             } else {
-              throw new Error("All approaches failed");
+              throw new Error("Dose logging failed");
             }
             
           } catch (error) {

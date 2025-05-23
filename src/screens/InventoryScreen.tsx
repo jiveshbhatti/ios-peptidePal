@@ -1,14 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   RefreshControl,
   ActivityIndicator,
   Alert,
   TouchableOpacity,
+  SectionList,
+  Platform,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
+import { SwipeListView } from 'react-native-swipe-list-view';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
 import SearchBar from '@/components/ui/SearchBar';
@@ -18,12 +21,13 @@ import PeptideFormModal from '@/components/inventory/PeptideFormModal';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import { InventoryPeptide, InventoryBacWater, InventorySyringe } from '@/types/inventory';
 import { inventoryService } from '@/services/inventory.service';
+import { AppHaptics } from '@/utils/haptics';
+import { Feather } from 'react-native-feather';
 
 export default function InventoryScreen() {
-  const { inventoryPeptides, bacWater, syringes, loading, refreshData } = useData();
+  const { inventoryPeptides, peptides, bacWater, syringes, loading, refreshData } = useData();
   const [searchQuery, setSearchQuery] = useState('');
   const [tab, setTab] = useState(0);
-  const [filteredPeptides, setFilteredPeptides] = useState<InventoryPeptide[]>([]);
   const [refreshing, setRefreshing] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedPeptide, setSelectedPeptide] = useState<InventoryPeptide | undefined>();
@@ -31,255 +35,267 @@ export default function InventoryScreen() {
   // Segmented control tabs
   const tabs = ['Peptides', 'BAC Water', 'Syringes', 'Other'];
 
-  // Filter peptides based on search query
-  useEffect(() => {
-    if (!inventoryPeptides) return;
+  // Memoized filtered peptides
+  const filteredPeptides = useMemo(() => {
+    if (!inventoryPeptides) return [];
 
     if (searchQuery.trim() === '') {
-      setFilteredPeptides(inventoryPeptides);
-    } else {
-      const query = searchQuery.toLowerCase().trim();
-      const filtered = inventoryPeptides.filter((peptide) =>
-        peptide.name.toLowerCase().includes(query) ||
-        (peptide.batch_number && peptide.batch_number.toLowerCase().includes(query))
-      );
-      setFilteredPeptides(filtered);
+      return inventoryPeptides;
     }
+    
+    const query = searchQuery.toLowerCase().trim();
+    return inventoryPeptides.filter((peptide) =>
+      peptide.name.toLowerCase().includes(query) ||
+      (peptide.batch_number && peptide.batch_number.toLowerCase().includes(query))
+    );
   }, [searchQuery, inventoryPeptides]);
 
-  // Split peptides into active and inactive
-  const activePeptides = filteredPeptides.filter(
-    (peptide) => peptide.active_vial_status === 'IN_USE'
-  );
-  
-  const inactivePeptides = filteredPeptides.filter(
-    (peptide) => peptide.active_vial_status !== 'IN_USE'
-  );
+  // Memoized sections for better performance
+  const sections = useMemo(() => {
+    const activePeptides = filteredPeptides.filter(
+      (peptide) => peptide.active_vial_status === 'IN_USE'
+    );
+    
+    const inactivePeptides = filteredPeptides.filter(
+      (peptide) => peptide.active_vial_status !== 'IN_USE'
+    );
 
-  const handlePeptidePress = (peptide: InventoryPeptide) => {
-    // Show edit form modal for the selected peptide
+    return [
+      { title: 'Active Peptides', data: activePeptides },
+      { title: 'Inactive Stock', data: inactivePeptides },
+    ].filter(section => section.data.length > 0);
+  }, [filteredPeptides]);
+
+  const handlePeptidePress = useCallback((peptide: InventoryPeptide) => {
+    AppHaptics.buttonTap();
     setSelectedPeptide(peptide);
     setShowFormModal(true);
-  };
+  }, []);
 
-  const handlePeptideLongPress = (peptide: InventoryPeptide) => {
-    Alert.alert(
-      'Peptide Options',
-      `${peptide.name}`,
-      [
-        {
-          text: 'Edit',
-          onPress: () => console.log('Edit peptide:', peptide.id),
-        },
-        {
-          text: 'Activate Vial',
-          onPress: () => handleActivateVial(peptide),
-          style: peptide.num_vials > 0 ? 'default' : 'destructive',
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => handleDeletePeptide(peptide),
-        },
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-      ],
-      { cancelable: true }
-    );
-  };
-
-  const handleActivateVial = (peptide: InventoryPeptide) => {
+  const handleActivateVial = useCallback(async (peptide: InventoryPeptide) => {
     if (peptide.num_vials <= 0) {
+      AppHaptics.error();
       Alert.alert('No Vials', 'No vials available to activate');
       return;
     }
 
+    AppHaptics.activateVial();
     Alert.alert(
       'Activate Vial',
       `Activate a new vial of ${peptide.name}?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Activate',
           onPress: async () => {
             try {
-              const today = new Date().toISOString();
-              await inventoryService.activatePeptideVial(peptide.id, today);
+              await inventoryService.activatePeptideVial(peptide.id);
+              AppHaptics.success();
               await refreshData();
             } catch (error) {
-              console.error('Error activating vial:', error);
+              AppHaptics.error();
               Alert.alert('Error', 'Failed to activate vial');
             }
           },
         },
-      ],
-      { cancelable: true }
+      ]
     );
-  };
+  }, [refreshData]);
 
-  const handleDeletePeptide = (peptide: InventoryPeptide) => {
+  const handleDeletePeptide = useCallback(async (peptide: InventoryPeptide) => {
+    AppHaptics.delete();
     Alert.alert(
       'Delete Peptide',
       `Are you sure you want to delete ${peptide.name}?`,
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
-              await inventoryService.deletePeptideFromInventory(peptide.id, peptide.name);
+              await inventoryService.deletePeptide(peptide.id);
+              AppHaptics.success();
               await refreshData();
             } catch (error) {
-              console.error('Error deleting peptide:', error);
+              AppHaptics.error();
               Alert.alert('Error', 'Failed to delete peptide');
             }
           },
         },
-      ],
-      { cancelable: true }
+      ]
     );
-  };
+  }, [refreshData]);
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
+    AppHaptics.pullToRefresh();
     setRefreshing(true);
     await refreshData();
     setRefreshing(false);
-  };
+  }, [refreshData]);
 
-  const handleAddItem = () => {
-    if (tab === 0) {
-      // Show peptide form modal for adding new peptide
-      setSelectedPeptide(undefined);
-      setShowFormModal(true);
-    } else {
-      // TODO: Show form for other inventory types
-      Alert.alert('Coming Soon', `Adding ${tabs[tab]} will be available soon.`);
-    }
-  };
+  const handleTabChange = useCallback((index: number) => {
+    AppHaptics.tabSwitch();
+    setTab(index);
+  }, []);
 
-  if (loading && !refreshing) {
+  const handleAddPress = useCallback(() => {
+    AppHaptics.buttonTap();
+    setSelectedPeptide(undefined);
+    setShowFormModal(true);
+  }, []);
+
+  const renderPeptideItem = useCallback(({ item }: { item: InventoryPeptide }) => {
+    // Find the associated Peptide for accurate dose tracking
+    const schedulePeptide = peptides.find(p => p.id === item.id);
+    
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={theme.colors.primary} />
+      <InventoryPeptideCard
+        peptide={item}
+        schedulePeptide={schedulePeptide}
+        onPress={() => handlePeptidePress(item)}
+      />
+    );
+  }, [handlePeptidePress, peptides]);
+
+  const renderHiddenItem = useCallback((data: { item: InventoryPeptide }) => (
+    <View style={styles.rowBack}>
+      <TouchableOpacity
+        style={[styles.backButton, styles.activateButton]}
+        onPress={() => handleActivateVial(data.item)}
+      >
+        <Feather name="check-circle" size={20} color="white" />
+        <Text style={styles.backButtonText}>Activate</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.backButton, styles.deleteButton]}
+        onPress={() => handleDeletePeptide(data.item)}
+      >
+        <Feather name="trash-2" size={20} color="white" />
+        <Text style={styles.backButtonText}>Delete</Text>
+      </TouchableOpacity>
+    </View>
+  ), [handleActivateVial, handleDeletePeptide]);
+
+  const keyExtractor = useCallback((item: InventoryPeptide) => item.id, []);
+
+  const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionTitle}>{section.title}</Text>
+      <Text style={styles.sectionCount}>({section.data.length})</Text>
+    </View>
+  ), []);
+
+  const renderContent = () => {
+    if (loading && !refreshing) {
+      return (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={theme.colors.primary} />
+        </View>
+      );
+    }
+
+    if (tab === 0) {
+      // Peptides tab with swipeable list
+      if (sections.length === 0) {
+        return (
+          <View style={styles.emptyContainer}>
+            <Feather name="package" size={48} color={theme.colors.textLight} />
+            <Text style={styles.emptyText}>
+              {searchQuery ? 'No peptides found' : 'No peptides in inventory'}
+            </Text>
+            <Text style={styles.emptySubtext}>
+              Tap the + button to add your first peptide
+            </Text>
+          </View>
+        );
+      }
+
+      return (
+        <SwipeListView
+          useSectionList
+          sections={sections}
+          renderItem={renderPeptideItem}
+          renderHiddenItem={renderHiddenItem}
+          renderSectionHeader={renderSectionHeader}
+          keyExtractor={keyExtractor}
+          rightOpenValue={-150}
+          leftOpenValue={75}
+          disableRightSwipe
+          onSwipeValueChange={(swipeData) => {
+            if (Math.abs(swipeData.value) > 20) {
+              AppHaptics.swipeAction();
+            }
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={theme.colors.primary}
+            />
+          }
+          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled={false}
+        />
+      );
+    }
+
+    // Other tabs placeholder
+    return (
+      <View style={styles.comingSoonContainer}>
+        <Feather name="tool" size={48} color={theme.colors.textLight} />
+        <Text style={styles.comingSoonText}>Coming Soon</Text>
+        <Text style={styles.comingSoonSubtext}>
+          {tabs[tab]} inventory management will be available in the next update
+        </Text>
       </View>
     );
-  }
+  };
 
   return (
     <View style={styles.container}>
       <SearchBar
-        placeholder="Search inventory..."
         value={searchQuery}
         onChangeText={setSearchQuery}
+        placeholder="Search inventory..."
+        style={styles.searchBar}
       />
-
+      
       <SegmentedControl
         options={tabs}
         selectedIndex={tab}
-        onChange={setTab}
+        onChange={handleTabChange}
       />
 
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={theme.colors.primary}
-          />
-        }
-      >
-        {tab === 0 && (
-          <>
-            {/* Peptides Tab */}
-            {filteredPeptides.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No peptides in inventory</Text>
-                <TouchableOpacity
-                  style={styles.emptyButton}
-                  onPress={handleAddItem}
-                >
-                  <Text style={styles.emptyButtonText}>Add Peptide</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <>
-                {activePeptides.length > 0 && (
-                  <View>
-                    <Text style={styles.sectionTitle}>
-                      Active Peptides ({activePeptides.length})
-                    </Text>
-                    {activePeptides.map((peptide) => (
-                      <InventoryPeptideCard
-                        key={peptide.id}
-                        peptide={peptide}
-                        onPress={() => handlePeptidePress(peptide)}
-                        onLongPress={() => handlePeptideLongPress(peptide)}
-                      />
-                    ))}
-                  </View>
-                )}
+      {renderContent()}
 
-                {inactivePeptides.length > 0 && (
-                  <View>
-                    <Text style={styles.sectionTitle}>
-                      Inactive Stock ({inactivePeptides.length})
-                    </Text>
-                    {inactivePeptides.map((peptide) => (
-                      <InventoryPeptideCard
-                        key={peptide.id}
-                        peptide={peptide}
-                        onPress={() => handlePeptidePress(peptide)}
-                        onLongPress={() => handlePeptideLongPress(peptide)}
-                      />
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
-          </>
-        )}
+      {tab === 0 && (
+        <FloatingActionButton onPress={handleAddPress} />
+      )}
 
-        {tab === 1 && (
-          // BAC Water Tab
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>BAC Water inventory will be implemented soon</Text>
-          </View>
-        )}
-
-        {tab === 2 && (
-          // Syringes Tab
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Syringes inventory will be implemented soon</Text>
-          </View>
-        )}
-
-        {tab === 3 && (
-          // Other Tab
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Other items inventory will be implemented soon</Text>
-          </View>
-        )}
-      </ScrollView>
-
-      <FloatingActionButton onPress={handleAddItem} />
-
-      {/* Peptide Form Modal */}
       <PeptideFormModal
         visible={showFormModal}
-        onClose={() => setShowFormModal(false)}
+        onClose={() => {
+          AppHaptics.modalClose();
+          setShowFormModal(false);
+        }}
+        onSubmit={async (data) => {
+          AppHaptics.formSubmit();
+          try {
+            if (selectedPeptide) {
+              await inventoryService.updatePeptide(selectedPeptide.id, data);
+            } else {
+              await inventoryService.addPeptide(data);
+            }
+            AppHaptics.success();
+            await refreshData();
+            setShowFormModal(false);
+          } catch (error) {
+            AppHaptics.error();
+            Alert.alert('Error', 'Failed to save peptide');
+          }
+        }}
         peptide={selectedPeptide}
-        onSave={refreshData}
       />
     </View>
   );
@@ -288,47 +304,98 @@ export default function InventoryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: theme.colors.background,
+  },
+  searchBar: {
+    margin: theme.spacing.md,
+  },
+  listContent: {
+    paddingBottom: 100,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
   },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: theme.spacing.xl + 60, // Extra padding for FAB
-  },
   sectionTitle: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.gray[800],
-    marginTop: theme.spacing.md,
-    marginHorizontal: theme.spacing.md,
-    marginBottom: theme.spacing.sm,
+    color: theme.colors.text,
   },
-  emptyState: {
+  sectionCount: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    marginLeft: theme.spacing.xs,
+  },
+  centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingVertical: theme.spacing.xl * 3,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
   },
   emptyText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.gray[500],
-    marginBottom: theme.spacing.md,
+    fontSize: 18,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginTop: theme.spacing.md,
+    textAlign: 'center',
   },
-  emptyButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.md,
+  emptySubtext: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  comingSoonContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: theme.spacing.xl,
+  },
+  comingSoonText: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: theme.colors.text,
+    marginTop: theme.spacing.md,
+  },
+  comingSoonSubtext: {
+    fontSize: 14,
+    color: theme.colors.textLight,
+    marginTop: theme.spacing.xs,
+    textAlign: 'center',
+  },
+  rowBack: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingRight: theme.spacing.md,
+  },
+  backButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 70,
+    height: '90%',
+    marginLeft: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
   },
-  emptyButtonText: {
-    color: theme.colors.background,
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
+  activateButton: {
+    backgroundColor: theme.colors.success,
+  },
+  deleteButton: {
+    backgroundColor: theme.colors.error,
+  },
+  backButtonText: {
+    color: 'white',
+    fontSize: 12,
+    marginTop: 4,
   },
 });
