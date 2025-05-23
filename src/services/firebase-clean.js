@@ -22,7 +22,7 @@ import {
 } from 'firebase/firestore';
 
 // DEBUG FLAG - when true, logs all Firestore operations
-const DEBUG_FIREBASE = true;
+const DEBUG_FIREBASE = false;
 
 // COLLECTION NAMES - these are the exact collection names in Firestore
 const COLLECTION = {

@@ -332,23 +332,16 @@ export default function PeptideDetailsScreen() {
                 <View style={styles.inventoryInfo}>
                   <View style={styles.inventoryRow}>
                     <Icon.Package stroke={theme.colors.gray[500]} width={18} height={18} />
-                    <Text style={styles.inventoryLabel}>Available Stock:</Text>
+                    <Text style={styles.inventoryLabel}>Remaining Stock:</Text>
                     <Text style={styles.inventoryValue}>{inventoryPeptide.num_vials} vials</Text>
                   </View>
                   {inventoryPeptide.active_vial_status === 'IN_USE' && (
                     <View style={styles.inventoryRow}>
                       <Icon.CheckCircle stroke={theme.colors.secondary} width={18} height={18} />
-                      <Text style={styles.inventoryLabel}>Active Vials:</Text>
-                      <Text style={[styles.inventoryValue, { color: theme.colors.secondary }]}>1 vial</Text>
+                      <Text style={styles.inventoryLabel}>Active Vial:</Text>
+                      <Text style={[styles.inventoryValue, { color: theme.colors.secondary }]}>1 in use</Text>
                     </View>
                   )}
-                  <View style={styles.inventoryRow}>
-                    <Icon.Archive stroke={theme.colors.gray[500]} width={18} height={18} />
-                    <Text style={styles.inventoryLabel}>Total Supply:</Text>
-                    <Text style={styles.inventoryValue}>
-                      {inventoryPeptide.num_vials + (inventoryPeptide.active_vial_status === 'IN_USE' ? 1 : 0)} vials
-                    </Text>
-                  </View>
                   {inventoryPeptide.concentration_per_vial_mcg && (
                     <View style={styles.inventoryRow}>
                       <Icon.Activity stroke={theme.colors.gray[500]} width={18} height={18} />
@@ -358,6 +351,13 @@ export default function PeptideDetailsScreen() {
                       </Text>
                     </View>
                   )}
+                  <View style={styles.inventoryNote}>
+                    <Text style={styles.inventoryNoteText}>
+                      {inventoryPeptide.active_vial_status === 'IN_USE' 
+                        ? `Total: ${inventoryPeptide.num_vials} remaining + 1 active = ${inventoryPeptide.num_vials + 1} vials`
+                        : `Total stock: ${inventoryPeptide.num_vials} vials`}
+                    </Text>
+                  </View>
                 </View>
                 
                 {/* Actions */}
@@ -582,6 +582,17 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[800],
     fontWeight: '500',
+  },
+  inventoryNote: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray[200],
+  },
+  inventoryNoteText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[600],
+    fontStyle: 'italic',
   },
   summaryCard: {
     backgroundColor: theme.colors.background,

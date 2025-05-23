@@ -41,4 +41,67 @@ yarn-error.*
 # Firebase service account keys
 serviceAccountKey.json
 *serviceAccountKey*.json
+peptidepal-firebase-*.json
+
+# MCP tools
 mcp-playwright
+ios-simulator-mcp
+
+# Development and test files
+*test*.js
+test-results/
+scripts/
+tools/
+
+# Database migration and fix scripts
+check-*.js
+fix-*.js
+reconstruct-*.js
+initialize-*.js
+dump-*.sh
+fix-*.sh
+
+# Backup and export scripts
+backup-*.js
+restore-*.js
+export-*.js
+backups/
+
+# Database setup files
+setup-*.js
+setup-*.sql
+create-*.sql
+verify-*.js
+set-env.js
+
+# Sample data
+sample-*.json
+
+# Screenshots and temporary images (except assets)
+/*.png
+
+# Documentation files (development only)
+*.md
+!README.md
+!CLAUDE.md
+
+# Database exports and schema files
+db-export/
+db-schema/
+db-test.js
+
+# Supabase development files
+supabase/
+
+# Development environment files
+.env*
+!.env.example
+
+# Build artifacts
+ios/build/
+android/build/
+
+# Temporary files
+*.tmp
+*.temp
+*.log

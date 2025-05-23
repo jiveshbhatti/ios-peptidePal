@@ -3,6 +3,7 @@
     "name": "PeptidePal",
     "slug": "peptidepal",
     "version": "1.0.0",
+    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -15,6 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jiveshbhatti.peptidepal",
+      "buildNumber": "1",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -43,10 +45,14 @@
         "calendarPermission": "PeptidePal needs access to your calendar to help schedule peptide doses."
       }]
     ],
+    "owner": "jiveshbhatti",
     "extra": {
       "eas": {
         "projectId": "YOUR_EAS_PROJECT_ID"
       }
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
     }
   }
 }
