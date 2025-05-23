@@ -22,6 +22,7 @@ import RemainingDosesVisualization from '@/components/RemainingDosesVisualizatio
 import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { inventoryService } from '@/services/inventory.service';
 import { AppHaptics } from '@/utils/haptics';
+import { calculateRemainingDoses } from '@/utils/dose-calculations';
 
 type PeptideDetailsRouteProp = RouteProp<RootStackParamList, 'PeptideDetails'>;
 type PeptideDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'PeptideDetails'>;
@@ -38,6 +39,7 @@ export default function PeptideDetailsScreen() {
   
   const peptide = peptides.find(p => p.id === peptideId);
   const activeVial = peptide?.vials?.find(v => v.isActive);
+  const remainingDoses = calculateRemainingDoses(peptide);
   
   useEffect(() => {
     if (peptide) {
@@ -202,7 +204,7 @@ export default function PeptideDetailsScreen() {
                 <Text style={styles.sectionTitle}>Active Vial</Text>
                 <RemainingDosesVisualization
                   initialDoses={activeVial.initialAmountUnits}
-                  remainingDoses={activeVial.remainingAmountUnits}
+                  remainingDoses={remainingDoses}
                 />
                 <View style={styles.vialInfo}>
                   <View style={styles.vialInfoRow}>
@@ -263,7 +265,7 @@ export default function PeptideDetailsScreen() {
             </View>
 
             {/* Actions */}
-            {(!activeVial || activeVial.remainingAmountUnits <= 0) && (
+            {(!activeVial || remainingDoses <= 0) && (
               <TouchableOpacity style={styles.actionButton} onPress={handleActivateNewVial}>
                 <Icon.Plus stroke="white" width={20} height={20} />
                 <Text style={styles.actionButtonText}>Activate New Vial</Text>

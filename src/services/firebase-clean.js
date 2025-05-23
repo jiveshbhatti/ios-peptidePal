@@ -247,42 +247,46 @@ const firebaseCleanService = {
       const doseLogsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS);
       const doseLogRef = await addDoc(doseLogsCollection, newDoseLog);
       
-      // Update vial's remaining doses
-      const updatedVials = peptide.vials.map(vial => {
-        if (vial.id === activeVial.id) {
-          const newRemainingDoses = Math.max(0, vial.remainingAmountUnits - 1);
-          const isEmpty = newRemainingDoses <= 0;
-          
-          return {
-            ...vial,
-            remainingAmountUnits: newRemainingDoses,
-            isActive: isEmpty ? false : vial.isActive,
-            notes: isEmpty 
-              ? `${vial.notes || ''}\nDepleted on ${new Date().toLocaleDateString()}`.trim()
-              : vial.notes
-          };
-        }
-        return vial;
-      });
+      // Don't update remainingAmountUnits - it will be calculated from dose logs
+      // This prevents sync issues when doses are reverted
       
-      // Update the peptide document with new vials array
-      const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
-      await updateDoc(peptideRef, {
-        vials: updatedVials,
-        updatedAt: serverTimestamp()
-      });
-      
-      // Update inventory status if vial is depleted
-      const updatedActiveVial = updatedVials.find(v => v.id === activeVial.id);
-      if (updatedActiveVial && updatedActiveVial.remainingAmountUnits <= 0) {
-        console.log(`[Firebase Clean] Vial ${activeVial.id} depleted, updating inventory status`);
+      // Check if vial should be marked as depleted based on dose logs
+      // We'll need to fetch the updated peptide to calculate from logs
+      const updatedPeptide = await this.getPeptideById(peptideId);
+      if (updatedPeptide) {
+        // Import the calculation function
+        const { calculateRemainingDoses } = require('../utils/dose-calculations');
+        const remainingDoses = calculateRemainingDoses(updatedPeptide);
         
-        // Update inventory peptide status
-        const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
-        await updateDoc(inventoryRef, {
-          active_vial_status: 'FINISHED',
-          updated_at: serverTimestamp()
-        });
+        if (remainingDoses <= 0) {
+          console.log(`[Firebase Clean] Vial ${activeVial.id} depleted based on dose logs, updating status`);
+          
+          // Mark vial as inactive
+          const updatedVials = peptide.vials.map(vial => {
+            if (vial.id === activeVial.id) {
+              return {
+                ...vial,
+                isActive: false,
+                notes: `${vial.notes || ''}\nDepleted on ${new Date().toLocaleDateString()}`.trim()
+              };
+            }
+            return vial;
+          });
+          
+          // Update the peptide document
+          const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+          await updateDoc(peptideRef, {
+            vials: updatedVials,
+            updatedAt: serverTimestamp()
+          });
+          
+          // Update inventory status
+          const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+          await updateDoc(inventoryRef, {
+            active_vial_status: 'FINISHED',
+            updated_at: serverTimestamp()
+          });
+        }
       }
       
       this._log('addDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/*`, true);
