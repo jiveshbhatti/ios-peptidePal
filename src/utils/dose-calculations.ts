@@ -232,11 +232,19 @@ export function getDrawVolumeForPeptide(
   if (activeVial && activeVial.reconstitutionBacWaterMl) {
     let totalMcgInVial = activeVial.totalPeptideInVialMcg || 0;
     
-    // Special handling for Glow if totalPeptideInVialMcg is missing
-    if (peptide.name === 'Glow' && !totalMcgInVial) {
-      // Glow typically comes in 10mg vials
-      totalMcgInVial = 10000; // 10mg = 10000mcg
-      console.log('Using default 10mg (10000mcg) for Glow vial');
+    // Special handling for peptides if totalPeptideInVialMcg is missing
+    if (!totalMcgInVial) {
+      // Default vial sizes for known peptides
+      const defaultVialSizes: { [key: string]: number } = {
+        'Glow': 10000,     // 10mg = 10000mcg
+        'NAD+': 1000000,   // 1000mg = 1,000,000mcg (NAD+ typically comes in 1g vials)
+        'Retatrutide': 10000, // 10mg = 10000mcg
+      };
+      
+      if (defaultVialSizes[peptide.name]) {
+        totalMcgInVial = defaultVialSizes[peptide.name];
+        console.log(`Using default ${totalMcgInVial}mcg for ${peptide.name} vial`);
+      }
     }
     
     const doseMcg = peptide.typicalDosageUnits || 0;
