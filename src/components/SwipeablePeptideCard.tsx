@@ -15,7 +15,7 @@ import { theme } from '@/constants/theme';
 import { Peptide } from '@/types/peptide';
 import { AppHaptics } from '@/utils/haptics';
 import Card from '@/components/ui/Card';
-import { calculateRemainingDoses, formatDoseDisplay } from '@/utils/dose-calculations';
+import { calculateRemainingDoses, formatDoseDisplay, getDrawVolumeForPeptide } from '@/utils/dose-calculations';
 
 interface SwipeablePeptideCardProps {
   peptide: Peptide;
@@ -43,6 +43,9 @@ export default function SwipeablePeptideCard({
   // Calculate remaining doses using consistent logic
   const remainingDoses = calculateRemainingDoses(peptide);
   const doseDisplay = formatDoseDisplay(remainingDoses);
+  
+  // Calculate draw volume
+  const drawVolume = getDrawVolumeForPeptide(peptide);
 
   const renderLeftActions = (progress: Animated.AnimatedInterpolation) => {
     if (!isLogged || !onRevert) return null; // Only show when logged and revert is available
@@ -224,6 +227,11 @@ export default function SwipeablePeptideCard({
               <Text style={[styles.schedule, isLogged && styles.loggedSubText]}>
                 {scheduleTime} • {peptide.typicalDosageUnits}{peptide.dosageUnit}
               </Text>
+              {drawVolume > 0 && (
+                <Text style={[styles.drawVolume, isLogged && styles.loggedDrawVolume]}>
+                  Draw {drawVolume} units
+                </Text>
+              )}
               {remainingDoses > 0 && (
                 <Text
                   style={[
@@ -346,6 +354,16 @@ const styles = StyleSheet.create({
   },
   lowStock: {
     color: theme.colors.warning,
+  },
+  drawVolume: {
+    fontSize: theme.typography.fontSize.base,
+    fontWeight: '600',
+    color: theme.colors.primary,
+    marginTop: 2,
+  },
+  loggedDrawVolume: {
+    color: theme.colors.gray[600],
+    fontWeight: '500',
   },
   leftAction: {
     backgroundColor: theme.colors.warning,

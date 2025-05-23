@@ -169,3 +169,53 @@ export function formatDoseDisplay(remainingDoses: number): {
     return { text: `${remainingDoses} doses left`, isLowStock };
   }
 }
+
+/**
+ * Calculate volume to draw in insulin units (100 units = 1mL)
+ * @param doseMcg - Dose in micrograms
+ * @param concentrationMcgPerMl - Concentration in mcg/mL
+ * @param bacWaterMl - Amount of BAC water used for reconstitution
+ * @returns Volume in insulin units (rounded to nearest unit)
+ */
+export function calculateDrawVolume(
+  doseMcg: number,
+  concentrationMcgPerMl: number | null | undefined,
+  bacWaterMl: number | null | undefined
+): number {
+  // If we don't have concentration or BAC water info, return 0
+  if (!concentrationMcgPerMl || !bacWaterMl || bacWaterMl === 0) {
+    return 0;
+  }
+  
+  // Calculate actual concentration after reconstitution
+  // concentrationMcgPerMl is the total mcg in the vial
+  // After adding BAC water, the concentration is: total mcg / BAC water mL
+  const actualConcentration = concentrationMcgPerMl / bacWaterMl;
+  
+  // Calculate volume in mL
+  const volumeMl = doseMcg / actualConcentration;
+  
+  // Convert to insulin units (100 units = 1mL)
+  const volumeUnits = volumeMl * 100;
+  
+  // Round to nearest unit
+  return Math.round(volumeUnits);
+}
+
+/**
+ * Get draw volume for a peptide based on its active vial
+ */
+export function getDrawVolumeForPeptide(peptide: Peptide): number {
+  const activeVial = peptide.vials?.find(v => v.isActive);
+  
+  if (!activeVial || !activeVial.bacWaterAmount) {
+    return 0;
+  }
+  
+  // Use the total mcg in the vial (concentration is a misnomer here)
+  const totalMcgInVial = activeVial.concentration || peptide.concentrationPerBottleMcg || 0;
+  const doseMcg = peptide.typicalDosageUnits || 0;
+  const bacWaterMl = activeVial.bacWaterAmount;
+  
+  return calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
+}
