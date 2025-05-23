@@ -205,17 +205,32 @@ export function calculateDrawVolume(
 /**
  * Get draw volume for a peptide based on its active vial
  */
-export function getDrawVolumeForPeptide(peptide: Peptide): number {
+export function getDrawVolumeForPeptide(
+  peptide: Peptide, 
+  inventoryPeptide?: InventoryPeptide | null
+): number {
   const activeVial = peptide.vials?.find(v => v.isActive);
   
-  if (!activeVial || !activeVial.bacWaterAmount) {
-    return 0;
+  // First check if vial has reconstitution info
+  if (activeVial && activeVial.reconstitutionBacWaterMl) {
+    const totalMcgInVial = activeVial.totalPeptideInVialMcg || 0;
+    const doseMcg = peptide.typicalDosageUnits || 0;
+    const bacWaterMl = activeVial.reconstitutionBacWaterMl;
+    
+    return calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
   }
   
-  // Use the total mcg in the vial (concentration is a misnomer here)
-  const totalMcgInVial = activeVial.concentration || peptide.concentrationPerBottleMcg || 0;
-  const doseMcg = peptide.typicalDosageUnits || 0;
-  const bacWaterMl = activeVial.bacWaterAmount;
+  // Fallback to inventory data if available
+  if (inventoryPeptide && 
+      inventoryPeptide.bac_water_volume_added && 
+      inventoryPeptide.concentration_per_vial_mcg &&
+      inventoryPeptide.typical_dose_mcg) {
+    return calculateDrawVolume(
+      inventoryPeptide.typical_dose_mcg,
+      inventoryPeptide.concentration_per_vial_mcg,
+      inventoryPeptide.bac_water_volume_added
+    );
+  }
   
-  return calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
+  return 0;
 }

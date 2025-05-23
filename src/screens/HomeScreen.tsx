@@ -28,7 +28,7 @@ type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
-  const { peptides, loading, refreshData } = useData();
+  const { peptides, inventoryPeptides, loading, refreshData } = useData();
   const { service } = useDatabase();
   const [selectedDate, setSelectedDate] = useState(new Date());
   
@@ -333,17 +333,21 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : (
-          scheduledPeptides.map(({ peptide, time }) => (
-            <SwipeablePeptideCard
-              key={`${peptide.id}-${time}`}
-              peptide={peptide}
-              scheduleTime={time}
-              isLogged={isDoseLogged(peptide.id, time)}
-              onLog={() => handleLogDose(peptide.id, time)}
-              onRevert={() => handleRevertDose(peptide.id, time)}
-              onPress={() => handlePeptidePress(peptide.id)}
-            />
-          ))
+          scheduledPeptides.map(({ peptide, time }) => {
+            const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptide.id);
+            return (
+              <SwipeablePeptideCard
+                key={`${peptide.id}-${time}`}
+                peptide={peptide}
+                inventoryPeptide={inventoryPeptide}
+                scheduleTime={time}
+                isLogged={isDoseLogged(peptide.id, time)}
+                onLog={() => handleLogDose(peptide.id, time)}
+                onRevert={() => handleRevertDose(peptide.id, time)}
+                onPress={() => handlePeptidePress(peptide.id)}
+              />
+            );
+          })
         )}
       </View>
 

@@ -13,12 +13,14 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 import * as Icon from 'react-native-feather';
 import { theme } from '@/constants/theme';
 import { Peptide } from '@/types/peptide';
+import { InventoryPeptide } from '@/types/inventory';
 import { AppHaptics } from '@/utils/haptics';
 import Card from '@/components/ui/Card';
 import { calculateRemainingDoses, formatDoseDisplay, getDrawVolumeForPeptide } from '@/utils/dose-calculations';
 
 interface SwipeablePeptideCardProps {
   peptide: Peptide;
+  inventoryPeptide?: InventoryPeptide;
   scheduleTime: 'AM' | 'PM';
   isLogged: boolean;
   onLog: () => void;
@@ -31,6 +33,7 @@ const SWIPE_THRESHOLD = screenWidth * 0.3;
 
 export default function SwipeablePeptideCard({
   peptide,
+  inventoryPeptide,
   scheduleTime,
   isLogged,
   onLog,
@@ -41,11 +44,11 @@ export default function SwipeablePeptideCard({
   const hasTriggeredHaptic = useRef(false);
 
   // Calculate remaining doses using consistent logic
-  const remainingDoses = calculateRemainingDoses(peptide);
+  const remainingDoses = calculateRemainingDoses(peptide, inventoryPeptide);
   const doseDisplay = formatDoseDisplay(remainingDoses);
   
   // Calculate draw volume
-  const drawVolume = getDrawVolumeForPeptide(peptide);
+  const drawVolume = getDrawVolumeForPeptide(peptide, inventoryPeptide);
 
   const renderLeftActions = (progress: Animated.AnimatedInterpolation) => {
     if (!isLogged || !onRevert) return null; // Only show when logged and revert is available
