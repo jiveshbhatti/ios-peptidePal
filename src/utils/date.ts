@@ -24,14 +24,24 @@ export function formatDate(date: Date | string, formatString = 'MMM d, yyyy'): s
   const month = dateObj.getMonth();
   const day = dateObj.getDate();
   
-  return formatString
-    .replace('yyyy', year.toString())
-    .replace('MM', (month + 1).toString().padStart(2, '0'))
-    .replace('M', (month + 1).toString())
-    .replace('MMMM', months[month])
-    .replace('MMM', shortMonths[month])
-    .replace('dd', day.toString().padStart(2, '0'))
-    .replace('d', day.toString());
+  // Handle the most common patterns in order
+  let result = formatString;
+  
+  // Year
+  result = result.replace('yyyy', year.toString());
+  result = result.replace('yy', year.toString().slice(-2));
+  
+  // Month
+  result = result.replace('MMMM', months[month]);
+  result = result.replace('MMM', shortMonths[month]);
+  result = result.replace('MM', (month + 1).toString().padStart(2, '0'));
+  result = result.replace('M', (month + 1).toString());
+  
+  // Day
+  result = result.replace('dd', day.toString().padStart(2, '0'));
+  result = result.replace('d', day.toString());
+  
+  return result;
 }
 
 /**

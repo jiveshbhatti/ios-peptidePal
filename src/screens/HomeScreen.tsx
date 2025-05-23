@@ -15,7 +15,7 @@ import { RootStackParamList } from '@/navigation/RootNavigator';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
-import Calendar from '@/components/Calendar';
+import { HorizontalWeekCalendar } from '@/components/HorizontalWeekCalendar';
 import SwipeablePeptideCard from '@/components/SwipeablePeptideCard';
 import { Peptide, DoseLog } from '@/types/peptide';
 import { AppHaptics } from '@/utils/haptics';
@@ -146,16 +146,22 @@ export default function HomeScreen() {
   };
 
   // Get dates with scheduled peptides for calendar markers
-  const getMarkedDates = (): Date[] => {
-    const marked: Date[] = [];
+  const getMarkedDates = (): { [date: string]: { marked: boolean; dotColor?: string } } => {
+    const marked: { [date: string]: { marked: boolean; dotColor?: string } } = {};
     const today = new Date();
+    const startDate = new Date(today);
+    startDate.setDate(startDate.getDate() - 30); // Look 30 days back
     const endDate = new Date(today);
-    endDate.setMonth(endDate.getMonth() + 3); // Look 3 months ahead
+    endDate.setDate(endDate.getDate() + 30); // Look 30 days ahead
 
-    for (let d = new Date(today); d <= endDate; d.setDate(d.getDate() + 1)) {
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const daySchedule = getScheduledPeptidesForDate(new Date(d));
       if (daySchedule.length > 0) {
-        marked.push(new Date(d));
+        const dateString = dateUtils.formatDate(new Date(d), 'yyyy-MM-dd');
+        marked[dateString] = { 
+          marked: true, 
+          dotColor: theme.colors.primary 
+        };
       }
     }
 
@@ -314,7 +320,7 @@ export default function HomeScreen() {
       }
     >
       
-      <Calendar
+      <HorizontalWeekCalendar
         selectedDate={selectedDate}
         onDateSelect={setSelectedDate}
         markedDates={getMarkedDates()}
@@ -322,7 +328,9 @@ export default function HomeScreen() {
 
       <View style={styles.scheduleSection}>
         <Text style={styles.scheduleTitle}>
-          Today's Schedule
+          {dateUtils.isToday(selectedDate) 
+            ? "Today's Schedule" 
+            : `Schedule for ${dateUtils.formatDate(selectedDate, 'MMM d')}`}
         </Text>
 
         {scheduledPeptides.length === 0 ? (
