@@ -199,7 +199,7 @@ export const inventoryService = {
         reconstitutionBacWaterMl: bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2,
         totalPeptideInVialMcg: inventoryPeptide.concentration_per_vial_mcg || 0,
         dateAdded: new Date().toISOString(),
-        notes: `Activated with ${bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2}mL BAC water`
+        notes: `Activated with ${bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2}mL BAC water. Stock before activation: ${inventoryPeptide.num_vials + 1} vials.`
       };
 
       // First deactivate all existing vials
