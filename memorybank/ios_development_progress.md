@@ -13,14 +13,14 @@
 ## Features from Web App to Implement
 
 ### Core Features
-- [ ] Inventory-centric peptide management
-  - [ ] Create inventory screens
-  - [ ] Add/Edit/Delete peptide inventory
-  - [ ] Vial activation system
-  - [ ] Centralized peptide definition with schedule
-  - [ ] Stock tracking (num_vials, concentration, typical dose)
+- [x] Inventory-centric peptide management
+  - [x] Create inventory screens
+  - [x] Add/Edit/Delete peptide inventory
+  - [x] Vial activation system
+  - [x] Centralized peptide definition with schedule
+  - [x] Stock tracking (num_vials, concentration, typical dose)
   - [x] Active vial lifecycle management
-  - [ ] Single source of truth for peptide properties
+  - [x] Single source of truth for peptide properties
 - [x] Calendar view for scheduling
   - [ ] Weekly view
   - [x] Monthly view
@@ -32,10 +32,10 @@
   - [x] Log dose dialog
   - [x] Verify vial status
   - [x] Update remaining amounts
-- [ ] Peptide information page
-  - [ ] Display peptide details
-  - [ ] Show vial information
-  - [ ] Dosage charts (line/bar)
+- [x] Peptide information page
+  - [x] Display peptide details
+  - [x] Show vial information
+  - [x] Dosage charts (line/bar)
 - [ ] Usage summary page
   - [ ] Consolidated overview
   - [ ] Vial status tracking
@@ -53,7 +53,7 @@
   - [x] Inventory
   - [x] Calculator
   - [x] Summary
-- [ ] Stack navigation for detail screens
+- [x] Stack navigation for detail screens
 
 ### UI Components to Create
 - [x] Common UI components
@@ -74,14 +74,14 @@
   - [ ] Sparkline charts for mini visualizations
 
 ### Services to Implement
-- [x] Peptide service (CRUD operations)
+- [x] Peptide service (Firebase CRUD operations)
 - [x] Inventory service
 - [x] Dose logging service
-- [ ] Calculator utilities
+- [x] Calculator utilities (dose calculations)
 - [x] Date/time utilities
 
 ### Real-time Features
-- [ ] Supabase subscriptions (replaced with polling)
+- [x] Firebase real-time listeners
 - [x] Live data updates
 - [x] Sync across devices
 
@@ -91,32 +91,43 @@
   - [x] iOS standard spacing (16px margins)
   - [x] Native component heights (44px, 48px)
   - [x] Bottom safe area handling
-- [ ] Haptic feedback
-  - [ ] Success feedback on dose logging
-  - [ ] Selection feedback on taps
+- [x] Haptic feedback
+  - [x] Success feedback on dose logging
+  - [x] Selection feedback on taps
+  - [x] Impact feedback on swipe thresholds
 - [x] Bottom sheet modals for iOS pattern
-- [ ] Swipe actions on list items
-  - [ ] Swipe to edit/delete
-  - [ ] Swipe to log dose
+- [x] Swipe actions on list items
+  - [ ] Swipe to edit/delete (in inventory)
+  - [x] Swipe to log dose
+  - [x] Swipe to revert dose
 - [x] Floating action buttons with spring animations
-- [ ] Smooth transitions between screens
+- [x] Smooth transitions between screens
 - [ ] Push notifications (future)
 - [ ] Calendar integration
 - [ ] Health app integration (future)
 
-## Current Status
-- Project initialized with React Native Expo
-- Basic folder structure created
-- Dependencies installed
-- Git repository configured
-- Type definitions copied from web app
-- Navigation structure implemented with bottom tabs
-- Home screen with calendar and schedule implemented
-- Basic data sync from Supabase with polling
-- UI components created with iOS-native styling
-- Date utilities implemented without external dependencies
-- Peptide card styling with visual differentiation for logged doses
-- Fixed scheduling logic to respect vial status
+## Current Status (Updated: January 2025)
+
+### Completed Features
+- ✅ **Firebase Integration**: Fully migrated from Supabase to Firebase Firestore
+- ✅ **Stack Navigation**: Added peptide details screen accessible from home and inventory
+- ✅ **Peptide Details Screen**: Three-tab view (Overview, History, Stats) with vial management
+- ✅ **Swipe Gestures**: Implemented swipe-to-log and swipe-to-revert with haptic feedback
+- ✅ **Volume Display**: Shows "Draw X units" on schedule cards for easy dosing
+- ✅ **Calculated Dose Tracking**: Using dose logs as source of truth (no stored counters)
+- ✅ **Vial Lifecycle**: Auto-depletion, expiration checking, inventory status updates
+- ✅ **Real-time Sync**: Firebase real-time listeners for instant updates
+- ✅ **Haptic Feedback**: Success/delete haptics on dose logging and reverting
+- ✅ **Visual Polish**: Enhanced cards, status indicators, and swipe hints
+
+### Technical Implementation
+- React Native with Expo SDK 51
+- Firebase Firestore for data persistence
+- React Navigation (Stack + Bottom Tabs)
+- TypeScript for type safety
+- Custom haptic utilities
+- No authentication (single-user app)
+- Calculated remaining doses from dose logs
 
 ## Key Web App Features to Replicate (Recently Implemented)
 
@@ -196,32 +207,58 @@
    - Expandable vial overview section
    - Interactive charts with tooltips
 
-## Next Steps
-1. ✅ Create basic navigation structure
-   - ✅ Bottom tab navigation with icons
-   - [ ] Stack navigation for detail screens
-   - ✅ Proper safe area handling
-2. ✅ Skip authentication (following web app pattern)
-3. Create main screens with iOS patterns:
-   - ✅ Calendar with native date components
-   - [ ] Inventory with search and sections
-   - [ ] Calculator with real-time updates
-   - [ ] Summary with export options
-4. Port UI components with iOS adaptations:
-   - ✅ Bottom sheets instead of dialogs
-   - ✅ Native segmented controls
-   - ✅ iOS-style form inputs
-5. Implement data services:
-   - ✅ Direct Supabase integration (no auth)
-   - [ ] Real-time subscriptions
-   - [ ] Offline data caching
-6. Add iOS-specific polish:
-   - [ ] Haptic feedback
-   - [ ] Swipe gestures
-   - ✅ Spring animations
-   - ✅ Pull-to-refresh
-7. [ ] Test on iOS simulator and devices
-8. [ ] Build for TestFlight
+## Remaining Features to Implement
+
+### High Priority
+1. **Summary Dashboard**
+   - [ ] Time period selector (Week/Month/Year)
+   - [ ] Peptide usage statistics
+   - [ ] Dose compliance tracking
+   - [ ] Export functionality
+
+2. **Calculator Screen Polish**
+   - [ ] Better UI/UX for calculator
+   - [ ] Save calculation history
+   - [ ] Quick reference from peptide forms
+
+3. **Inventory Management**
+   - [ ] Search functionality
+   - [ ] Swipe to edit/delete
+   - [ ] Better visual indicators for stock levels
+   - [ ] Batch operations
+
+### Medium Priority
+4. **Data Import/Export**
+   - [ ] Export to JSON functionality
+   - [ ] Import from JSON with validation
+   - [ ] Backup reminders
+
+5. **UI Polish**
+   - [ ] Loading states for all screens
+   - [ ] Empty states with helpful messages
+   - [ ] Error handling with user-friendly messages
+   - [ ] Consistent animations throughout
+
+6. **Advanced Features**
+   - [ ] Dose reminders/notifications
+   - [ ] Calendar integration
+   - [ ] Dark mode support
+   - [ ] Widget support (iOS 14+)
+
+### Low Priority
+7. **Future Enhancements**
+   - [ ] Multi-user support
+   - [ ] Cloud backup beyond Firebase
+   - [ ] Health app integration
+   - [ ] Apple Watch companion app
+   - [ ] Siri shortcuts
+
+## Testing & Deployment
+- [x] Test on iOS simulator
+- [ ] Test on physical iOS devices
+- [ ] Performance optimization
+- [ ] Build for TestFlight
+- [ ] App Store submission preparation
 
 ## Architecture Decisions to Maintain
 - Inventory-first data model
