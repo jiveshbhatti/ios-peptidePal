@@ -11,12 +11,20 @@ interface VialHistoryCardProps {
   peptideId: string;
   onEdit?: (vial: Vial) => void;
   onDelete?: (vialId: string) => void;
+  onDiscard?: (vialId: string, reason: string) => void;
 }
 
-export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete }: VialHistoryCardProps) {
+export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onDiscard }: VialHistoryCardProps) {
   const isExpired = vial.expirationDate ? new Date(vial.expirationDate) < new Date() : false;
   const isEmpty = vial.remainingAmountUnits <= 0;
   const usagePercentage = ((vial.initialAmountUnits - vial.remainingAmountUnits) / vial.initialAmountUnits) * 100;
+  const isDiscarded = vial.discardedAt || vial.discardReason;
+  
+  // Calculate days until expiry for warning
+  const daysUntilExpiry = vial.expirationDate 
+    ? differenceInDays(parseISO(vial.expirationDate), new Date())
+    : null;
+  const isExpiringSoon = daysUntilExpiry !== null && daysUntilExpiry <= 7 && daysUntilExpiry > 0;
   
   const getDaysActive = (): number => {
     const startDate = parseISO(vial.dateAdded);
@@ -25,21 +33,27 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete }: V
   };
 
   const getStatusColor = () => {
+    if (isDiscarded) return theme.colors.gray[400];
     if (isExpired) return theme.colors.error;
+    if (isExpiringSoon) return theme.colors.warning || '#F59E0B';
     if (isEmpty) return theme.colors.gray[500];
     if (vial.isActive) return theme.colors.secondary;
     return theme.colors.gray[500];
   };
 
   const getStatusText = () => {
+    if (isDiscarded) return 'Discarded';
     if (isExpired) return 'Expired';
+    if (isExpiringSoon) return `Expires in ${daysUntilExpiry} days`;
     if (isEmpty) return 'Empty';
     if (vial.isActive) return 'Active';
     return 'Inactive';
   };
 
   const getStatusIcon = () => {
+    if (isDiscarded) return <Icon.XCircle stroke={getStatusColor()} width={16} height={16} />;
     if (isExpired) return <Icon.AlertCircle stroke={getStatusColor()} width={16} height={16} />;
+    if (isExpiringSoon) return <Icon.AlertTriangle stroke={getStatusColor()} width={16} height={16} />;
     if (isEmpty) return <Icon.Package stroke={getStatusColor()} width={16} height={16} />;
     if (vial.isActive) return <Icon.CheckCircle stroke={getStatusColor()} width={16} height={16} />;
     return <Icon.Circle stroke={getStatusColor()} width={16} height={16} />;
@@ -72,8 +86,59 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete }: V
     );
   };
 
+  const handleDiscard = () => {
+    AppHaptics.buttonTap();
+    const reasons = [
+      'Expired',
+      'Contaminated',
+      'Damaged',
+      'Lost',
+      'Other'
+    ];
+    
+    Alert.alert(
+      'Discard Vial',
+      'Why are you discarding this vial?',
+      reasons.map(reason => ({
+        text: reason,
+        onPress: () => {
+          if (reason === 'Other') {
+            Alert.prompt(
+              'Discard Reason',
+              'Please specify the reason:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Discard',
+                  style: 'destructive',
+                  onPress: (customReason) => {
+                    if (onDiscard) {
+                      onDiscard(vial.id, customReason || 'Other reason');
+                    }
+                  }
+                }
+              ],
+              'plain-text'
+            );
+          } else {
+            if (onDiscard) {
+              onDiscard(vial.id, reason);
+            }
+          }
+        }
+      })),
+      { cancelable: true }
+    );
+  };
+
   return (
-    <View style={[styles.container, vial.isActive && styles.activeContainer]}>
+    <View style={[
+      styles.container, 
+      vial.isActive && styles.activeContainer,
+      isExpiringSoon && styles.expiringContainer,
+      isExpired && styles.expiredContainer,
+      isDiscarded && styles.discardedContainer
+    ]}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Text style={styles.vialName}>{vial.name || `Vial ${vial.id.slice(0, 8)}`}</Text>
@@ -83,13 +148,21 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete }: V
           </View>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
-            <Icon.Edit3 stroke={theme.colors.gray[600]} width={18} height={18} />
-          </TouchableOpacity>
-          {!vial.isActive && (
-            <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
-              <Icon.Trash2 stroke={theme.colors.error} width={18} height={18} />
-            </TouchableOpacity>
+          {!isDiscarded && (
+            <>
+              <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
+                <Icon.Edit3 stroke={theme.colors.gray[600]} width={18} height={18} />
+              </TouchableOpacity>
+              {vial.isActive ? (
+                <TouchableOpacity onPress={handleDiscard} style={styles.actionButton}>
+                  <Icon.XCircle stroke={theme.colors.warning || '#F59E0B'} width={18} height={18} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
+                  <Icon.Trash2 stroke={theme.colors.error} width={18} height={18} />
+                </TouchableOpacity>
+              )}
+            </>
           )}
         </View>
       </View>
@@ -139,6 +212,13 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete }: V
             <Text style={styles.notesText}>{vial.notes}</Text>
           </View>
         )}
+        
+        {isDiscarded && vial.discardReason && (
+          <View style={styles.discardSection}>
+            <Text style={styles.discardLabel}>Discard Reason:</Text>
+            <Text style={styles.discardText}>{vial.discardReason}</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -156,6 +236,19 @@ const styles = StyleSheet.create({
   activeContainer: {
     borderColor: theme.colors.primary,
     borderWidth: 2,
+  },
+  expiringContainer: {
+    borderColor: theme.colors.warning || '#F59E0B',
+    borderWidth: 2,
+  },
+  expiredContainer: {
+    borderColor: theme.colors.error,
+    borderWidth: 2,
+    opacity: 0.8,
+  },
+  discardedContainer: {
+    opacity: 0.6,
+    backgroundColor: theme.colors.gray[50],
   },
   header: {
     flexDirection: 'row',
@@ -240,6 +333,23 @@ const styles = StyleSheet.create({
   notesText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[700],
+    lineHeight: 20,
+  },
+  discardSection: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray[100],
+  },
+  discardLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.error,
+    marginBottom: theme.spacing.xs,
+    fontWeight: '500',
+  },
+  discardText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.error,
     lineHeight: 20,
   },
 });

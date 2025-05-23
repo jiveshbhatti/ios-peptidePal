@@ -33,6 +33,10 @@ export interface Vial {
   dateAdded: string; // ISO date string, when this vial was added/started
   isActive: boolean; // True if this is the current vial being used for new dose logs
   notes?: string;
+  
+  // Discard tracking
+  discardedAt?: string; // ISO date string when vial was discarded
+  discardReason?: string; // Reason for discarding (e.g., "Expired", "Contaminated", etc.)
 }
 
 export interface DoseLog {

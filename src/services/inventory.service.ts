@@ -153,7 +153,7 @@ export const inventoryService = {
         active_vial_status: 'IN_USE',
         active_vial_reconstitution_date: reconstitutionDate,
         active_vial_expiry_date: new Date(
-          new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
+          new Date(reconstitutionDate).getTime() + 35 * 24 * 60 * 60 * 1000 // 5 weeks = 35 days
         ).toISOString(),
         bac_water_volume_added: bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2,
         updated_at: serverTimestamp()
@@ -194,7 +194,7 @@ export const inventoryService = {
         remainingAmountUnits: initialAmountUnits,
         reconstitutionDate,
         expirationDate: new Date(
-          new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
+          new Date(reconstitutionDate).getTime() + 35 * 24 * 60 * 60 * 1000 // 5 weeks = 35 days
         ).toISOString(),
         reconstitutionBacWaterMl: bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2,
         totalPeptideInVialMcg: inventoryPeptide.concentration_per_vial_mcg || 0,

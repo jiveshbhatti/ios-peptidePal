@@ -231,6 +231,18 @@ export default function PeptideDetailsScreen() {
     }
   }, [peptideId, refreshData]);
 
+  const handleDiscardVial = useCallback(async (vialId: string, reason: string) => {
+    try {
+      await firebaseCleanService.discardVial(peptideId, vialId, reason);
+      await refreshData();
+      AppHaptics.notificationSuccess();
+      Alert.alert('Success', 'Vial has been discarded');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to discard vial');
+      AppHaptics.notificationError();
+    }
+  }, [peptideId, refreshData]);
+
   const handleSaveVial = useCallback(async (vialId: string, updates: Partial<Vial>) => {
     try {
       await firebaseCleanService.updateVial(peptideId, vialId, updates);
@@ -439,6 +451,7 @@ export default function PeptideDetailsScreen() {
                     peptideId={peptideId}
                     onEdit={handleEditVial}
                     onDelete={handleDeleteVial}
+                    onDiscard={handleDiscardVial}
                   />
                 ))
             ) : (

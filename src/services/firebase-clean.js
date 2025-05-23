@@ -665,6 +665,55 @@ const firebaseCleanService = {
       this._log('recalculateVialDoses', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
       throw error;
     }
+  },
+
+  async discardVial(peptideId, vialId, reason) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Discarding vial ${vialId} for peptide ${peptideId}...`);
+      
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      const vialSnap = await getDoc(vialRef);
+      
+      if (!vialSnap.exists()) {
+        throw new Error(`Vial ${vialId} not found`);
+      }
+      
+      const vialData = vialSnap.data();
+      const discardDate = new Date().toISOString();
+      const discardNote = `Discarded on ${new Date(discardDate).toLocaleDateString()} - Reason: ${reason}`;
+      
+      // Update the vial to mark it as discarded
+      await updateDoc(vialRef, {
+        isActive: false,
+        remainingAmountUnits: 0,
+        discardedAt: discardDate,
+        discardReason: reason,
+        notes: vialData.notes ? `${vialData.notes} | ${discardNote}` : discardNote
+      });
+      
+      // Update inventory if this was an active vial
+      if (vialData.isActive) {
+        const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+        const inventorySnap = await getDoc(inventoryRef);
+        if (inventorySnap.exists()) {
+          await updateDoc(inventoryRef, {
+            active_vial_status: 'NONE',
+            active_vial_reconstitution_date: null,
+            active_vial_expiry_date: null,
+            updated_at: serverTimestamp()
+          });
+        }
+      }
+      
+      this._log('discardVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, true);
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error discarding vial ${vialId}:`, error);
+      this._log('discardVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
+      throw error;
+    }
   }
 };
 
