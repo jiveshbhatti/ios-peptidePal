@@ -163,8 +163,8 @@ export default function InventoryScreen() {
         <Text style={styles.sectionTitle}>{section.title}</Text>
         <Text style={styles.sectionCount}>({section.data.length})</Text>
       </View>
-      {section.title === 'Active Peptides' && (
-        <Text style={styles.sectionHint}>Long press for details • Tap to edit • Swipe left to activate</Text>
+      {section.title === 'Inactive Stock' && (
+        <Text style={styles.sectionHint}>Tap to edit • Swipe left to activate vial</Text>
       )}
     </View>
   ), []);
@@ -202,8 +202,13 @@ export default function InventoryScreen() {
           renderHiddenItem={renderHiddenItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={keyExtractor}
-          leftOpenValue={75}
+          leftOpenValue={85}
           disableRightSwipe
+          closeOnRowOpen={true}
+          closeOnRowBeginSwipe={false}
+          closeOnScroll={true}
+          friction={100}
+          tension={40}
           onSwipeValueChange={(swipeData) => {
             if (Math.abs(swipeData.value) > 20) {
               AppHaptics.swipeAction();
@@ -367,6 +372,15 @@ const styles = StyleSheet.create({
     marginTop: theme.spacing.xs,
     textAlign: 'center',
   },
+  hiddenItemContainer: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.background,
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingRight: theme.spacing.md,
+    height: '100%',
+  },
   rowBack: {
     alignItems: 'center',
     backgroundColor: theme.colors.background,
@@ -378,7 +392,7 @@ const styles = StyleSheet.create({
   backButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: 70,
+    width: 85,
     height: '90%',
     marginLeft: theme.spacing.xs,
     borderRadius: theme.borderRadius.md,
@@ -388,7 +402,8 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     color: 'white',
-    fontSize: 12,
+    fontSize: 14,
+    fontWeight: '600',
     marginTop: 4,
   },
 });
