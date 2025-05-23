@@ -211,13 +211,42 @@ export function getDrawVolumeForPeptide(
 ): number {
   const activeVial = peptide.vials?.find(v => v.isActive);
   
+  // Debug logging for Glow
+  if (peptide.name === 'Glow') {
+    console.log('=== Glow Draw Volume Debug ===');
+    console.log('Peptide typical dose:', peptide.typicalDosageUnits);
+    console.log('Active vial:', activeVial);
+    if (activeVial) {
+      console.log('  reconstitutionBacWaterMl:', activeVial.reconstitutionBacWaterMl);
+      console.log('  totalPeptideInVialMcg:', activeVial.totalPeptideInVialMcg);
+    }
+    console.log('Inventory peptide:', inventoryPeptide);
+    if (inventoryPeptide) {
+      console.log('  bac_water_volume_added:', inventoryPeptide.bac_water_volume_added);
+      console.log('  concentration_per_vial_mcg:', inventoryPeptide.concentration_per_vial_mcg);
+      console.log('  typical_dose_mcg:', inventoryPeptide.typical_dose_mcg);
+    }
+  }
+  
   // First check if vial has reconstitution info
   if (activeVial && activeVial.reconstitutionBacWaterMl) {
-    const totalMcgInVial = activeVial.totalPeptideInVialMcg || 0;
+    let totalMcgInVial = activeVial.totalPeptideInVialMcg || 0;
+    
+    // Special handling for Glow if totalPeptideInVialMcg is missing
+    if (peptide.name === 'Glow' && !totalMcgInVial) {
+      // Glow typically comes in 10mg vials
+      totalMcgInVial = 10000; // 10mg = 10000mcg
+      console.log('Using default 10mg (10000mcg) for Glow vial');
+    }
+    
     const doseMcg = peptide.typicalDosageUnits || 0;
     const bacWaterMl = activeVial.reconstitutionBacWaterMl;
     
-    return calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
+    const result = calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
+    if (peptide.name === 'Glow') {
+      console.log('Calculated from vial:', result);
+    }
+    return result;
   }
   
   // Fallback to inventory data if available
@@ -225,11 +254,19 @@ export function getDrawVolumeForPeptide(
       inventoryPeptide.bac_water_volume_added && 
       inventoryPeptide.concentration_per_vial_mcg &&
       inventoryPeptide.typical_dose_mcg) {
-    return calculateDrawVolume(
+    const result = calculateDrawVolume(
       inventoryPeptide.typical_dose_mcg,
       inventoryPeptide.concentration_per_vial_mcg,
       inventoryPeptide.bac_water_volume_added
     );
+    if (peptide.name === 'Glow') {
+      console.log('Calculated from inventory:', result);
+    }
+    return result;
+  }
+  
+  if (peptide.name === 'Glow') {
+    console.log('No BAC water data found, returning 0');
   }
   
   return 0;
