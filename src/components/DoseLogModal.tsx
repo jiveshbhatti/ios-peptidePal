@@ -55,6 +55,11 @@ export default function DoseLogModal({
   const activeVial = peptide.vials?.find(v => v.isActive);
   const remainingDoses = calculateRemainingDoses(peptide);
   const isLowStock = remainingDoses > 0 && remainingDoses < 3;
+  
+  // Check if vial is expired
+  const isVialExpired = activeVial?.expirationDate 
+    ? new Date(activeVial.expirationDate) < new Date() 
+    : false;
 
   const handleLog = () => {
     const doseAmount = parseFloat(amount);
@@ -66,6 +71,14 @@ export default function DoseLogModal({
 
     if (!activeVial || remainingDoses === 0) {
       Alert.alert('No Active Vial', 'Please activate a vial from inventory');
+      return;
+    }
+    
+    if (isVialExpired) {
+      Alert.alert(
+        'Vial Expired', 
+        'The active vial has expired. Please activate a new vial from inventory'
+      );
       return;
     }
 
@@ -197,13 +210,17 @@ export default function DoseLogModal({
             {activeVial && (
               <View style={[
                 styles.vialStatusContainer, 
-                isLowStock && styles.lowStockContainer
+                isLowStock && styles.lowStockContainer,
+                isVialExpired && styles.expiredContainer
               ]}>
                 <Text style={[
                   styles.vialStatusText,
-                  isLowStock && styles.lowStockText
+                  isLowStock && styles.lowStockText,
+                  isVialExpired && styles.expiredText
                 ]}>
-                  {isLowStock 
+                  {isVialExpired
+                    ? 'Vial has expired! Please activate a new vial'
+                    : isLowStock 
                     ? `Low stock alert: ${remainingDoses} doses remaining` 
                     : `${remainingDoses} doses remaining in active vial`
                   }
@@ -382,6 +399,13 @@ const styles = StyleSheet.create({
   lowStockText: {
     color: theme.colors.warning,
     fontWeight: '500',
+  },
+  expiredContainer: {
+    backgroundColor: '#FEE2E2', // Light red
+  },
+  expiredText: {
+    color: theme.colors.error,
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

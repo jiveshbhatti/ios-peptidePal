@@ -10,6 +10,9 @@ import {
   SectionList,
   Platform,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '@/navigation/RootNavigator';
 import { FlashList } from '@shopify/flash-list';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import { theme } from '@/constants/theme';
@@ -23,9 +26,12 @@ import FloatingActionButton from '@/components/ui/FloatingActionButton';
 import { InventoryPeptide, InventoryBacWater, InventorySyringe } from '@/types/inventory';
 import { inventoryService } from '@/services/inventory.service';
 import { AppHaptics } from '@/utils/haptics';
-import { Feather } from 'react-native-feather';
+import * as Icon from 'react-native-feather';
+
+type InventoryScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
 export default function InventoryScreen() {
+  const navigation = useNavigation<InventoryScreenNavigationProp>();
   const { inventoryPeptides, peptides, bacWater, syringes, loading, refreshData } = useData();
   const { service } = useDatabase();
   const [searchQuery, setSearchQuery] = useState('');
@@ -104,30 +110,6 @@ export default function InventoryScreen() {
     );
   }, [refreshData]);
 
-  const handleDeletePeptide = useCallback(async (peptide: InventoryPeptide) => {
-    AppHaptics.delete();
-    Alert.alert(
-      'Delete Peptide',
-      `Are you sure you want to delete ${peptide.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await inventoryService.deletePeptideFromInventory(peptide.id, peptide.name);
-              AppHaptics.success();
-              await refreshData();
-            } catch (error) {
-              AppHaptics.error();
-              Alert.alert('Error', 'Failed to delete peptide');
-            }
-          },
-        },
-      ]
-    );
-  }, [refreshData]);
 
   const handleRefresh = useCallback(async () => {
     AppHaptics.pullToRefresh();
@@ -156,9 +138,10 @@ export default function InventoryScreen() {
         peptide={item}
         schedulePeptide={schedulePeptide}
         onPress={() => handlePeptidePress(item)}
+        onLongPress={() => navigation.navigate('PeptideDetails', { peptideId: item.id })}
       />
     );
-  }, [handlePeptidePress, peptides]);
+  }, [handlePeptidePress, peptides, navigation]);
 
   const renderHiddenItem = useCallback((data: { item: InventoryPeptide }) => (
     <View style={styles.rowBack}>
@@ -166,25 +149,23 @@ export default function InventoryScreen() {
         style={[styles.backButton, styles.activateButton]}
         onPress={() => handleActivateVial(data.item)}
       >
-        <Feather name="check-circle" size={20} color="white" />
+        <Icon.CheckCircle width={20} height={20} stroke="white" />
         <Text style={styles.backButtonText}>Activate</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.backButton, styles.deleteButton]}
-        onPress={() => handleDeletePeptide(data.item)}
-      >
-        <Feather name="trash-2" size={20} color="white" />
-        <Text style={styles.backButtonText}>Delete</Text>
-      </TouchableOpacity>
     </View>
-  ), [handleActivateVial, handleDeletePeptide]);
+  ), [handleActivateVial]);
 
   const keyExtractor = useCallback((item: InventoryPeptide) => item.id, []);
 
   const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
     <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{section.title}</Text>
-      <Text style={styles.sectionCount}>({section.data.length})</Text>
+      <View style={styles.sectionTitleRow}>
+        <Text style={styles.sectionTitle}>{section.title}</Text>
+        <Text style={styles.sectionCount}>({section.data.length})</Text>
+      </View>
+      {section.title === 'Active Peptides' && (
+        <Text style={styles.sectionHint}>Long press for details • Tap to edit • Swipe left to activate</Text>
+      )}
     </View>
   ), []);
 
@@ -202,7 +183,7 @@ export default function InventoryScreen() {
       if (sections.length === 0) {
         return (
           <View style={styles.emptyContainer}>
-            <Feather name="package" size={48} color={theme.colors.textLight} />
+            <Icon.Package width={48} height={48} stroke={theme.colors.gray[400]} />
             <Text style={styles.emptyText}>
               {searchQuery ? 'No peptides found' : 'No peptides in inventory'}
             </Text>
@@ -221,7 +202,6 @@ export default function InventoryScreen() {
           renderHiddenItem={renderHiddenItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={keyExtractor}
-          rightOpenValue={-150}
           leftOpenValue={75}
           disableRightSwipe
           onSwipeValueChange={(swipeData) => {
@@ -245,7 +225,7 @@ export default function InventoryScreen() {
     // Other tabs placeholder
     return (
       <View style={styles.comingSoonContainer}>
-        <Feather name="tool" size={48} color={theme.colors.textLight} />
+        <Icon.Tool width={48} height={48} stroke={theme.colors.gray[400]} />
         <Text style={styles.comingSoonText}>Coming Soon</Text>
         <Text style={styles.comingSoonSubtext}>
           {tabs[tab]} inventory management will be available in the next update
@@ -283,27 +263,17 @@ export default function InventoryScreen() {
         }}
         onSubmit={async (inventoryData, scheduleData) => {
           AppHaptics.formSubmit();
-          console.log('Saving peptide with database:', useFirebase ? 'Firebase' : 'Supabase');
+          console.log('Saving peptide with Firebase');
           console.log('Inventory data:', inventoryData);
           console.log('Schedule data:', scheduleData);
           
           try {
-            if (useFirebase) {
-              // Use Firebase service
-              console.log('Using Firebase service for save');
-              if (selectedPeptide) {
-                await service.updatePeptideInInventory(selectedPeptide.id, inventoryData, scheduleData);
-              } else {
-                await service.addPeptideToInventory(inventoryData, scheduleData);
-              }
+            // Use Firebase service
+            console.log('Using Firebase service for save');
+            if (selectedPeptide) {
+              await service.updatePeptideInInventory(selectedPeptide.id, inventoryData, scheduleData);
             } else {
-              // Use Supabase service
-              console.log('Using Supabase service for save');
-              if (selectedPeptide) {
-                await inventoryService.updatePeptideInInventory(selectedPeptide.id, inventoryData, scheduleData);
-              } else {
-                await inventoryService.addPeptideToInventory(inventoryData, scheduleData);
-              }
+              await service.addPeptideToInventory(inventoryData, scheduleData);
             }
             AppHaptics.success();
             await refreshData();
@@ -332,21 +302,28 @@ const styles = StyleSheet.create({
     paddingBottom: 100,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
     backgroundColor: theme.colors.surface,
   },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: theme.colors.gray[800],
   },
   sectionCount: {
     fontSize: 14,
-    color: theme.colors.textLight,
+    color: theme.colors.gray[500],
     marginLeft: theme.spacing.xs,
+  },
+  sectionHint: {
+    fontSize: 12,
+    color: theme.colors.gray[400],
+    marginTop: theme.spacing.xs,
   },
   centerContainer: {
     flex: 1,
@@ -362,13 +339,13 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 18,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: theme.colors.gray[800],
     marginTop: theme.spacing.md,
     textAlign: 'center',
   },
   emptySubtext: {
     fontSize: 14,
-    color: theme.colors.textLight,
+    color: theme.colors.gray[500],
     marginTop: theme.spacing.xs,
     textAlign: 'center',
   },
@@ -381,12 +358,12 @@ const styles = StyleSheet.create({
   comingSoonText: {
     fontSize: 20,
     fontWeight: '600',
-    color: theme.colors.text,
+    color: theme.colors.gray[800],
     marginTop: theme.spacing.md,
   },
   comingSoonSubtext: {
     fontSize: 14,
-    color: theme.colors.textLight,
+    color: theme.colors.gray[500],
     marginTop: theme.spacing.xs,
     textAlign: 'center',
   },
@@ -407,10 +384,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   activateButton: {
-    backgroundColor: theme.colors.success,
-  },
-  deleteButton: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: theme.colors.secondary,
   },
   backButtonText: {
     color: 'white',

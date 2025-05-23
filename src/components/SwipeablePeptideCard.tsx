@@ -109,7 +109,7 @@ export default function SwipeablePeptideCard({
           styles.rightAction,
           {
             opacity,
-            shadowColor: theme.colors.success,
+            shadowColor: theme.colors.secondary,
             shadowOffset: { width: 0, height: 0 },
             shadowOpacity: 0.5,
             shadowRadius: glowRadius,
@@ -237,26 +237,28 @@ export default function SwipeablePeptideCard({
               )}
             </View>
 
-            <View style={styles.logIndicator}>
-              {isLogged ? (
-                <View style={styles.loggedButton}>
-                  <Text style={styles.loggedText}>Logged</Text>
-                </View>
-              ) : (
-                <View style={styles.logButton}>
-                  <Text style={styles.logButtonText}>Log</Text>
-                </View>
-              )}
-            </View>
+            {/* Chevron for navigation hint */}
+            <Icon.ChevronRight
+              width={20}
+              height={20}
+              color={theme.colors.gray[400]}
+            />
           </View>
 
-          {/* Swipe hint */}
+          {/* Swipe hint for logging */}
           {!isLogged && (
             <View style={styles.swipeHint}>
               <Icon.ChevronRight
-                width={16}
-                height={16}
-                color={theme.colors.gray[400]}
+                width={14}
+                height={14}
+                color={theme.colors.secondary}
+                style={{ opacity: 0.6 }}
+              />
+              <Icon.ChevronRight
+                width={14}
+                height={14}
+                color={theme.colors.secondary}
+                style={{ opacity: 0.4, marginLeft: -8 }}
               />
             </View>
           )}
@@ -345,29 +347,6 @@ const styles = StyleSheet.create({
   lowStock: {
     color: theme.colors.warning,
   },
-  logIndicator: {
-    marginLeft: theme.spacing.md,
-  },
-  logButton: {
-    backgroundColor: theme.colors.primary,
-    paddingHorizontal: theme.spacing.lg,
-    paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.full,
-  },
-  logButtonText: {
-    color: theme.colors.background,
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
-  },
-  loggedButton: {
-    paddingHorizontal: theme.spacing.md,
-    paddingVertical: theme.spacing.sm,
-  },
-  loggedText: {
-    color: theme.colors.secondary,
-    fontSize: theme.typography.fontSize.base,
-    fontWeight: '600',
-  },
   leftAction: {
     backgroundColor: theme.colors.warning,
     justifyContent: 'center',
@@ -376,7 +355,7 @@ const styles = StyleSheet.create({
     marginRight: theme.spacing.xs,
   },
   rightAction: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: theme.colors.secondary,
     justifyContent: 'center',
     alignItems: 'flex-start',
     borderRadius: theme.borderRadius.lg,
@@ -397,9 +376,10 @@ const styles = StyleSheet.create({
   },
   swipeHint: {
     position: 'absolute',
-    right: theme.spacing.xs,
+    right: theme.spacing.md,
     top: '50%',
-    marginTop: -8,
-    opacity: 0.5,
+    marginTop: -7,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

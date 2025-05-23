@@ -243,10 +243,47 @@ const firebaseCleanService = {
       
       console.log(`[Firebase Clean] Logging dose: ${doseLog.dosage || doseLog.amount}${doseLog.unit || 'mcg'} for vial ${activeVial.id}`);
       
-      // Simply add the dose log without updating remainingAmountUnits
-      // The remaining doses will be calculated from the dose logs
+      // Add the dose log
       const doseLogsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.DOSE_LOGS);
       const doseLogRef = await addDoc(doseLogsCollection, newDoseLog);
+      
+      // Update vial's remaining doses
+      const updatedVials = peptide.vials.map(vial => {
+        if (vial.id === activeVial.id) {
+          const newRemainingDoses = Math.max(0, vial.remainingAmountUnits - 1);
+          const isEmpty = newRemainingDoses <= 0;
+          
+          return {
+            ...vial,
+            remainingAmountUnits: newRemainingDoses,
+            isActive: isEmpty ? false : vial.isActive,
+            notes: isEmpty 
+              ? `${vial.notes || ''}\nDepleted on ${new Date().toLocaleDateString()}`.trim()
+              : vial.notes
+          };
+        }
+        return vial;
+      });
+      
+      // Update the peptide document with new vials array
+      const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+      await updateDoc(peptideRef, {
+        vials: updatedVials,
+        updatedAt: serverTimestamp()
+      });
+      
+      // Update inventory status if vial is depleted
+      const updatedActiveVial = updatedVials.find(v => v.id === activeVial.id);
+      if (updatedActiveVial && updatedActiveVial.remainingAmountUnits <= 0) {
+        console.log(`[Firebase Clean] Vial ${activeVial.id} depleted, updating inventory status`);
+        
+        // Update inventory peptide status
+        const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+        await updateDoc(inventoryRef, {
+          active_vial_status: 'FINISHED',
+          updated_at: serverTimestamp()
+        });
+      }
       
       this._log('addDoseLog', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.DOSE_LOGS}/*`, true);
       

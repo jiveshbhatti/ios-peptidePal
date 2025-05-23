@@ -9,6 +9,9 @@ import {
   Alert,
   TouchableOpacity,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '@/navigation/RootNavigator';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
@@ -21,7 +24,10 @@ import DoseLogModal from '@/components/DoseLogModal';
 import BottomSheet from '@/components/ui/BottomSheet';
 import SuccessAnimation from '@/components/ui/SuccessAnimation';
 
+type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
+
 export default function HomeScreen() {
+  const navigation = useNavigation<HomeScreenNavigationProp>();
   const { peptides, loading, refreshData } = useData();
   const { service } = useDatabase();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -277,8 +283,7 @@ export default function HomeScreen() {
   };
 
   const handlePeptidePress = (peptideId: string) => {
-    // TODO: Navigate to peptide details
-    console.log('Navigate to peptide:', peptideId);
+    navigation.navigate('PeptideDetails', { peptideId });
   };
 
   const handleRefresh = async () => {
@@ -323,6 +328,9 @@ export default function HomeScreen() {
         {scheduledPeptides.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={styles.emptyText}>No peptides scheduled for this day</Text>
+            <Text style={styles.emptySubtext}>
+              Activate peptides from your inventory to see them here
+            </Text>
           </View>
         ) : (
           scheduledPeptides.map(({ peptide, time }) => (
@@ -359,20 +367,42 @@ export default function HomeScreen() {
               peptideId: selectedPeptide.id, // Include peptideId for better tracking
             };
             
-            let success = false;
-            
             // Use Firebase service from context
             console.log("Using Firebase service for dose logging");
-            await service.addDoseLog(selectedPeptide.id, doseData);
-            success = true;
+            const updatedPeptide = await service.addDoseLog(selectedPeptide.id, doseData);
             
-            if (success) {
-              // Close the modal and show success animation
-              setShowDoseModal(false);
-              setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
-              setShowSuccessAnimation(true);
-            } else {
-              throw new Error("Dose logging failed");
+            // Close the modal and show success animation
+            setShowDoseModal(false);
+            setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
+            setShowSuccessAnimation(true);
+            
+            // Check if vial was depleted
+            if (updatedPeptide) {
+              const activeVial = updatedPeptide.vials?.find(v => v.isActive);
+              if (!activeVial || activeVial.remainingAmountUnits <= 0) {
+                // Vial is depleted, show prompt to activate new one
+                setTimeout(() => {
+                  Alert.alert(
+                    'Vial Depleted',
+                    `The active vial for ${selectedPeptide.name} is now empty.`,
+                    [
+                      {
+                        text: 'Later',
+                        style: 'cancel',
+                      },
+                      {
+                        text: 'Go to Inventory',
+                        onPress: () => {
+                          // Navigate to inventory tab
+                          navigation.navigate('Main', { 
+                            screen: 'Inventory' 
+                          });
+                        },
+                      },
+                    ]
+                  );
+                }, 1000); // Delay to let success animation show first
+              }
             }
             
           } catch (error) {
@@ -426,5 +456,10 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[500],
+  },
+  emptySubtext: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[400],
+    marginTop: theme.spacing.xs,
   },
 });

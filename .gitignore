@@ -41,3 +41,4 @@ yarn-error.*
 # Firebase service account keys
 serviceAccountKey.json
 *serviceAccountKey*.json
+mcp-playwright
