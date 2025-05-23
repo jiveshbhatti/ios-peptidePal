@@ -155,12 +155,29 @@ export default function PeptideDetailsScreen() {
       return;
     }
 
+    // Check if there's already an active vial with doses remaining
+    if (activeVial && remainingDoses > 0) {
+      Alert.alert(
+        'Active Vial Exists',
+        `There's already an active vial with ${remainingDoses} doses remaining. Do you want to activate a new vial anyway?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Continue', onPress: () => proceedWithActivation() }
+        ]
+      );
+      return;
+    }
+
+    proceedWithActivation();
+  };
+
+  const proceedWithActivation = () => {
     AppHaptics.activateVial();
     
     // Prompt for BAC water amount
     Alert.prompt(
       'Activate New Vial',
-      `Enter the amount of BAC water (mL) to reconstitute ${peptide.name}:`,
+      `Enter the amount of BAC water (mL) to reconstitute ${peptide?.name}:`,
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -173,7 +190,7 @@ export default function PeptideDetailsScreen() {
 
             try {
               await inventoryService.activatePeptideVial(
-                peptide.id, 
+                peptide!.id, 
                 new Date().toISOString(),
                 parseFloat(bacWaterAmount)
               );
@@ -189,7 +206,7 @@ export default function PeptideDetailsScreen() {
         },
       ],
       'plain-text',
-      '2', // Default to 2mL
+      '3', // Default to 3mL for NAD+
       'numeric'
     );
   };
@@ -330,7 +347,7 @@ export default function PeptideDetailsScreen() {
                 </View>
                 
                 {/* Actions */}
-                {(!activeVial || remainingDoses <= 0) && inventoryPeptide.num_vials > 0 && (
+                {inventoryPeptide.num_vials > 0 && (
                   <TouchableOpacity style={styles.actionButton} onPress={handleActivateNewVial}>
                     <Icon.Plus stroke="white" width={20} height={20} />
                     <Text style={styles.actionButtonText}>Activate New Vial</Text>
