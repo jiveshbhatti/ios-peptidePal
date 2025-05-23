@@ -1,0 +1,32 @@
+🚀 PeptidePal TestFlight Deployment Quick Commands
+================================================
+
+📱 STEP 1: Build for iOS
+cd /Users/jiveshbhatti/Desktop/studio/ios-peptidepal
+npx eas-cli build --platform ios --profile production
+
+When prompted:
+- Log in to your Apple account
+- Let EAS create certificates/profiles automatically
+- Wait for build to complete (15-30 minutes)
+
+📤 STEP 2: Submit to TestFlight
+npx eas-cli submit -p ios --latest
+
+🔍 STEP 3: Check Status
+npx eas-cli build:list --platform ios --limit 1
+
+📊 STEP 4: View in Browser
+npx eas-cli build:view
+
+🎯 TestFlight Next Steps:
+1. Go to App Store Connect
+2. Navigate to TestFlight tab
+3. Add testers
+4. Submit for review
+
+💡 Tips:
+- Build URL: Check your terminal output
+- Project URL: https://expo.dev/accounts/jiveshbhatti/projects/peptidepal
+- Build takes ~15-30 minutes
+- TestFlight review takes ~24-48 hours

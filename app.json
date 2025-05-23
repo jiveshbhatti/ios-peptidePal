@@ -16,7 +16,6 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jiveshbhatti.peptidepal",
-      "buildNumber": "1",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -31,24 +30,35 @@
         "backgroundColor": "#008080"
       },
       "edgeToEdgeEnabled": true,
-      "package": "com.jiveshbhatti.peptidepal"
+      "package": "com.jiveshbhatti.peptidepal",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CALENDAR",
+        "android.permission.WRITE_CALENDAR"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-secure-store",
-      ["expo-image-picker", {
-        "photosPermission": "PeptidePal needs access to your photo library to save peptide images."
-      }],
-      ["expo-calendar", {
-        "calendarPermission": "PeptidePal needs access to your calendar to help schedule peptide doses."
-      }]
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "PeptidePal needs access to your photo library to save peptide images."
+        }
+      ],
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "PeptidePal needs access to your calendar to help schedule peptide doses."
+        }
+      ]
     ],
     "owner": "jiveshbhatti",
     "extra": {
       "eas": {
-        "projectId": "YOUR_EAS_PROJECT_ID"
+        "projectId": "811f36ad-1a77-4e72-b5c0-c9ababf645bc"
       }
     },
     "updates": {

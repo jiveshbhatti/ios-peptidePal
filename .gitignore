@@ -43,6 +43,10 @@ serviceAccountKey.json
 *serviceAccountKey*.json
 peptidepal-firebase-*.json
 
+# Deployment credentials - NEVER commit these
+DEPLOYMENT_CREDENTIALS.md
+*CREDENTIALS*.md
+
 # MCP tools
 mcp-playwright
 ios-simulator-mcp
