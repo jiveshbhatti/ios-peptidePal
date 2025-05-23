@@ -14,6 +14,7 @@ import { FlashList } from '@shopify/flash-list';
 import { SwipeListView } from 'react-native-swipe-list-view';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
+import { useDatabase } from '@/contexts/DatabaseContext';
 import SearchBar from '@/components/ui/SearchBar';
 import SegmentedControl from '@/components/ui/SegmentedControl';
 import InventoryPeptideCard from '@/components/inventory/InventoryPeptideCard';
@@ -26,6 +27,7 @@ import { Feather } from 'react-native-feather';
 
 export default function InventoryScreen() {
   const { inventoryPeptides, peptides, bacWater, syringes, loading, refreshData } = useData();
+  const { service } = useDatabase();
   const [searchQuery, setSearchQuery] = useState('');
   const [tab, setTab] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
@@ -89,7 +91,7 @@ export default function InventoryScreen() {
           text: 'Activate',
           onPress: async () => {
             try {
-              await inventoryService.activatePeptideVial(peptide.id);
+              await inventoryService.activatePeptideVial(peptide.id, new Date().toISOString());
               AppHaptics.success();
               await refreshData();
             } catch (error) {
@@ -114,7 +116,7 @@ export default function InventoryScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await inventoryService.deletePeptide(peptide.id);
+              await inventoryService.deletePeptideFromInventory(peptide.id, peptide.name);
               AppHaptics.success();
               await refreshData();
             } catch (error) {
@@ -279,19 +281,36 @@ export default function InventoryScreen() {
           AppHaptics.modalClose();
           setShowFormModal(false);
         }}
-        onSubmit={async (data) => {
+        onSubmit={async (inventoryData, scheduleData) => {
           AppHaptics.formSubmit();
+          console.log('Saving peptide with database:', useFirebase ? 'Firebase' : 'Supabase');
+          console.log('Inventory data:', inventoryData);
+          console.log('Schedule data:', scheduleData);
+          
           try {
-            if (selectedPeptide) {
-              await inventoryService.updatePeptide(selectedPeptide.id, data);
+            if (useFirebase) {
+              // Use Firebase service
+              console.log('Using Firebase service for save');
+              if (selectedPeptide) {
+                await service.updatePeptideInInventory(selectedPeptide.id, inventoryData, scheduleData);
+              } else {
+                await service.addPeptideToInventory(inventoryData, scheduleData);
+              }
             } else {
-              await inventoryService.addPeptide(data);
+              // Use Supabase service
+              console.log('Using Supabase service for save');
+              if (selectedPeptide) {
+                await inventoryService.updatePeptideInInventory(selectedPeptide.id, inventoryData, scheduleData);
+              } else {
+                await inventoryService.addPeptideToInventory(inventoryData, scheduleData);
+              }
             }
             AppHaptics.success();
             await refreshData();
             setShowFormModal(false);
           } catch (error) {
             AppHaptics.error();
+            console.error('Error saving peptide:', error);
             Alert.alert('Error', 'Failed to save peptide');
           }
         }}

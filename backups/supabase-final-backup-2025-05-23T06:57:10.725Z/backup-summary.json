@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-05-23T06:57:10.725Z",
+  "location": "./backups/supabase-final-backup-2025-05-23T06:57:10.725Z",
+  "tables": [
+    {
+      "name": "peptides",
+      "recordCount": 4,
+      "hasError": false
+    },
+    {
+      "name": "inventory_peptides",
+      "recordCount": 4,
+      "hasError": false
+    },
+    {
+      "name": "inventory_bac_water",
+      "recordCount": 1,
+      "hasError": false
+    },
+    {
+      "name": "inventory_syringes",
+      "recordCount": 0,
+      "hasError": false
+    },
+    {
+      "name": "inventory_other_items",
+      "recordCount": 0,
+      "hasError": false
+    }
+  ]
+}

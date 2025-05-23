@@ -17,29 +17,15 @@ import SwipeablePeptideCard from '@/components/SwipeablePeptideCard';
 import { Peptide, DoseLog } from '@/types/peptide';
 import { AppHaptics } from '@/utils/haptics';
 import * as dateUtils from '@/utils/date';
-import { peptideService } from '@/services/peptide.service.adaptive';
-import { peptideServiceDirect } from '@/services/peptide.service.direct';
-import { checkDbColumnNames, tryUpdateColumn } from '@/services/direct-db-check';
 import DoseLogModal from '@/components/DoseLogModal';
-import ColumnTestingTool from '@/components/ui/ColumnTestingTool';
 import BottomSheet from '@/components/ui/BottomSheet';
 import SuccessAnimation from '@/components/ui/SuccessAnimation';
-import DatabaseSwitcher from '@/components/DatabaseSwitcher';
 
 export default function HomeScreen() {
   const { peptides, loading, refreshData } = useData();
-  const { service, useFirebase } = useDatabase();
+  const { service } = useDatabase();
   const [selectedDate, setSelectedDate] = useState(new Date());
   
-  // Run column name check on component mount
-  useEffect(() => {
-    async function runDatabaseCheck() {
-      // Run the database column check to diagnose issues
-      await checkDbColumnNames();
-    }
-    
-    runDatabaseCheck();
-  }, []);
   const [refreshing, setRefreshing] = useState(false);
 
   // Get peptides scheduled for the selected day
@@ -217,7 +203,6 @@ export default function HomeScreen() {
   const [showDoseModal, setShowDoseModal] = useState(false);
   const [showSuccessAnimation, setShowSuccessAnimation] = useState(false);
   const [successMessage, setSuccessMessage] = useState('Dose logged successfully!');
-  const [showDatabaseTesting, setShowDatabaseTesting] = useState(false);
 
   // Handle reverting a logged dose
   const handleRevertDose = async (peptideId: string, time: 'AM' | 'PM') => {
@@ -246,16 +231,12 @@ export default function HomeScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              if (useFirebase) {
-                // Use Firebase service from context
-                console.log("Using Firebase service for dose removal");
-                if (service.removeDoseLog) {
-                  await service.removeDoseLog(peptideId, doseLogId);
-                } else {
-                  throw new Error('Firebase service does not support dose log removal');
-                }
+              // Use Firebase service from context
+              console.log("Using Firebase service for dose removal");
+              if (service.removeDoseLog) {
+                await service.removeDoseLog(peptideId, doseLogId);
               } else {
-                await peptideService.removeDoseLog(peptideId, doseLogId);
+                throw new Error('Firebase service does not support dose log removal');
               }
               
               // Show success message
@@ -290,22 +271,7 @@ export default function HomeScreen() {
     const peptide = peptides.find(p => p.id === peptideId);
     if (!peptide) return;
     
-    // Test database column to decide which approach to use
-    console.log("🔍 Verifying database column name");
-    const lowerCaseWorks = await tryUpdateColumn(peptideId, 'doselogs', peptide.doseLogs || []);
-    console.log(`Column name test result: lowercase='doselogs' works=${lowerCaseWorks}`);
-    
-    // Store the result in global app state for future reference
-    // @ts-ignore - Using global for React Native compatibility
-    global.PeptidePalConfig = global.PeptidePalConfig || {};
-    // @ts-ignore
-    global.PeptidePalConfig.useLowerCase = lowerCaseWorks;
-    
-    // Make sure we have the latest peptide data before showing the modal
-    const refreshedPeptides = await peptideService.getPeptides();
-    const refreshedPeptide = refreshedPeptides.find(p => p.id === peptideId);
-    
-    setSelectedPeptide(refreshedPeptide || peptide);
+    setSelectedPeptide(peptide);
     setSelectedTime(time);
     setShowDoseModal(true);
   };
@@ -342,20 +308,6 @@ export default function HomeScreen() {
         />
       }
     >
-      {/* Database Switcher for Firebase/Supabase */}
-      <DatabaseSwitcher />
-      {/* Database Testing Button - Only show in development */}
-      <TouchableOpacity 
-        style={styles.testingButton}
-        onPress={() => setShowDatabaseTesting(!showDatabaseTesting)}
-      >
-        <Text style={styles.testingButtonText}>
-          {showDatabaseTesting ? 'Hide DB Testing' : 'Show DB Testing'}
-        </Text>
-      </TouchableOpacity>
-      
-      {/* Conditional render of testing tool */}
-      {showDatabaseTesting && <ColumnTestingTool />}
       
       <Calendar
         selectedDate={selectedDate}
@@ -409,37 +361,10 @@ export default function HomeScreen() {
             
             let success = false;
             
-            if (useFirebase) {
-              // Use Firebase service from context
-              console.log("Using Firebase service for dose logging");
-              await service.addDoseLog(selectedPeptide.id, doseData);
-              success = true;
-            } else {
-              // Use Supabase services
-              // First try the direct multi-step approach which is most reliable
-              console.log("Trying direct multi-step approach first");
-              const directResult = await peptideServiceDirect.addDoseLogMultiStep(
-                selectedPeptide.id, 
-                doseData
-              );
-              
-              if (directResult) {
-                console.log("Direct multi-step approach succeeded!");
-                success = true;
-              } else {
-                // Fall back to the standard approach
-                console.log("Falling back to standard approach");
-                const standardResult = await peptideService.addDoseLog(
-                  selectedPeptide.id, 
-                  doseData
-                );
-                
-                if (standardResult) {
-                  console.log("Standard approach succeeded!");
-                  success = true;
-                }
-              }
-            }
+            // Use Firebase service from context
+            console.log("Using Firebase service for dose logging");
+            await service.addDoseLog(selectedPeptide.id, doseData);
+            success = true;
             
             if (success) {
               // Close the modal and show success animation
@@ -454,7 +379,7 @@ export default function HomeScreen() {
             console.error("Failed to log dose:", error);
             Alert.alert(
               "Error Logging Dose", 
-              "Could not log the dose. Please try again or use the column testing tool to diagnose database issues."
+              "Could not log the dose. Please try again."
             );
           } finally {
             // Refresh data in background
@@ -501,19 +426,5 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[500],
-  },
-  testingButton: {
-    backgroundColor: theme.colors.gray[200],
-    padding: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    marginHorizontal: theme.spacing.md,
-    marginTop: theme.spacing.sm,
-    marginBottom: theme.spacing.sm,
-    alignItems: 'center',
-  },
-  testingButtonText: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[800],
-    fontWeight: '500',
   },
 });

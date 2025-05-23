@@ -1,38 +1,56 @@
-import { supabase } from './supabase';
 import { InventoryPeptide, InventoryBacWater, InventorySyringe, InventoryOtherItem } from '@/types/inventory';
 import { Peptide, Vial } from '@/types/peptide';
-import { peptideService } from './peptide.service';
+import { generateUUID } from '@/utils/uuid';
+import firebaseCleanService, { firestoreDbClean } from './firebase-clean';
+import { 
+  collection, 
+  doc, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc,
+  serverTimestamp,
+  getDoc
+} from 'firebase/firestore';
+
+// Collection names
+const COLLECTION = {
+  PEPTIDES: 'peptides',
+  INVENTORY_PEPTIDES: 'inventory_peptides',
+  INVENTORY_BAC_WATER: 'inventory_bac_water',
+  INVENTORY_SYRINGES: 'inventory_syringes',
+  INVENTORY_OTHER_ITEMS: 'inventory_other_items'
+};
+
+const SUBCOLLECTION = {
+  VIALS: 'vials'
+};
 
 export const inventoryService = {
   // Update inventory peptide with usage tracking information
   async updatePeptideUsage(peptideId: string, usedDoses: number): Promise<boolean> {
     try {
       // Update the batch_number field with usage information
-      const { error } = await supabase
-        .from('inventory_peptides')
-        .update({ batch_number: `USAGE:${usedDoses}` })
-        .eq('id', peptideId);
+      const peptideRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      await updateDoc(peptideRef, { 
+        batch_number: `USAGE:${usedDoses}`,
+        updated_at: serverTimestamp()
+      });
       
-      if (error) throw error;
       return true;
     } catch (error) {
       console.error('Error updating peptide usage tracking:', error);
       return false;
     }
   },
+  
   // Peptide Inventory
   async getInventoryPeptides(): Promise<InventoryPeptide[]> {
-    const { data, error } = await supabase
-      .from('inventory_peptides')
-      .select('*')
-      .order('name');
-
-    if (error) {
+    try {
+      return await firebaseCleanService.getInventoryPeptides();
+    } catch (error) {
       console.error('Error fetching inventory peptides:', error);
       return [];
     }
-
-    return data || [];
   },
 
   async addPeptideToInventory(
@@ -45,45 +63,41 @@ export const inventoryService = {
       startDate?: string;
       notes?: string;
       dataAiHint?: string;
+      initialDosesPerVial?: number; // New field
     }
   ): Promise<boolean> {
     try {
-      // Create inventory entry
-      const { data: inventoryPeptide, error: inventoryError } = await supabase
-        .from('inventory_peptides')
-        .insert(inventoryData)
-        .select()
-        .single();
-
-      if (inventoryError) throw inventoryError;
+      // Generate a unique ID for both inventory and peptide entries
+      const peptideId = generateUUID();
+      
+      // Create inventory entry with explicit ID
+      const inventoryPeptideData = {
+        ...inventoryData,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        initial_doses_per_vial: scheduleData.initialDosesPerVial || Math.floor(inventoryData.concentration_per_vial_mcg / inventoryData.typical_dose_mcg)
+      };
+      
+      const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      await setDoc(inventoryRef, inventoryPeptideData);
 
       // Create corresponding peptide entry for scheduling
-      const peptideData: Omit<Peptide, 'id'> = {
-        id: inventoryPeptide.id, // Use same ID
+      const peptideData = {
         name: inventoryData.name,
         strength: scheduleData.strength,
         typicalDosageUnits: scheduleData.typicalDosageUnits,
         dosageUnit: scheduleData.dosageUnit,
         schedule: scheduleData.schedule,
-        startDate: scheduleData.startDate,
-        notes: scheduleData.notes,
-        dataAiHint: scheduleData.dataAiHint,
-        vials: [],
-        doseLogs: [],
+        startDate: scheduleData.startDate || new Date().toISOString(),
+        notes: scheduleData.notes || '',
+        dataAiHint: scheduleData.dataAiHint || '',
+        imageUrl: '',
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
 
-      const { error: peptideError } = await supabase
-        .from('peptides')
-        .insert(peptideData);
-
-      if (peptideError) {
-        // Rollback inventory if peptide creation fails
-        await supabase
-          .from('inventory_peptides')
-          .delete()
-          .eq('id', inventoryPeptide.id);
-        throw peptideError;
-      }
+      const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+      await setDoc(peptideRef, peptideData);
 
       return true;
     } catch (error) {
@@ -99,16 +113,15 @@ export const inventoryService = {
   ): Promise<boolean> {
     try {
       // Update inventory
-      const { error: inventoryError } = await supabase
-        .from('inventory_peptides')
-        .update(inventoryUpdates)
-        .eq('id', id);
-
-      if (inventoryError) throw inventoryError;
+      const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, id);
+      await updateDoc(inventoryRef, {
+        ...inventoryUpdates,
+        updated_at: serverTimestamp()
+      });
 
       // Update peptide if schedule updates provided
       if (scheduleUpdates) {
-        await peptideService.updatePeptide(id, scheduleUpdates);
+        await firebaseCleanService.updatePeptide(id, scheduleUpdates);
       }
 
       return true;
@@ -124,58 +137,55 @@ export const inventoryService = {
   ): Promise<boolean> {
     try {
       // Get inventory peptide
-      const { data: inventoryPeptide, error: invError } = await supabase
-        .from('inventory_peptides')
-        .select('*')
-        .eq('id', peptideId)
-        .single();
-
-      if (invError || !inventoryPeptide) throw invError;
+      const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      const inventorySnap = await getDoc(inventoryRef);
+      
+      if (!inventorySnap.exists()) {
+        throw new Error('Inventory peptide not found');
+      }
+      
+      const inventoryPeptide = { id: inventorySnap.id, ...inventorySnap.data() } as any;
 
       // Update inventory (decrement vials, set active status)
-      const { error: updateError } = await supabase
-        .from('inventory_peptides')
-        .update({
-          num_vials: inventoryPeptide.num_vials - 1,
-          active_vial_status: 'IN_USE',
-          active_vial_reconstitution_date: reconstitutionDate,
-          active_vial_expiry_date: new Date(
-            new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
-          ).toISOString(),
-        })
-        .eq('id', peptideId);
-
-      if (updateError) throw updateError;
+      await updateDoc(inventoryRef, {
+        num_vials: inventoryPeptide.num_vials - 1,
+        active_vial_status: 'IN_USE',
+        active_vial_reconstitution_date: reconstitutionDate,
+        active_vial_expiry_date: new Date(
+          new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
+        ).toISOString(),
+        updated_at: serverTimestamp()
+      });
 
       // Get or create peptide for scheduling
-      let peptide = await peptideService.getPeptideById(peptideId);
+      let peptide = await firebaseCleanService.getPeptideById(peptideId);
       
       if (!peptide) {
         // Create peptide if it doesn't exist
-        const peptideData: Peptide = {
-          id: inventoryPeptide.id,
+        const peptideData = {
           name: inventoryPeptide.name,
           strength: `${inventoryPeptide.concentration_per_vial_mcg}mcg/vial`,
           typicalDosageUnits: inventoryPeptide.typical_dose_mcg,
           dosageUnit: 'mcg',
           schedule: { frequency: 'daily', times: ['AM'] }, // Default
-          vials: [],
-          doseLogs: [],
+          startDate: new Date().toISOString(),
+          notes: '',
+          imageUrl: '',
+          dataAiHint: '',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
         };
         
-        const { error } = await supabase
-          .from('peptides')
-          .insert(peptideData);
-          
-        if (error) throw error;
-        peptide = peptideData;
+        const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+        await setDoc(peptideRef, peptideData);
       }
 
-      // Calculate initial amount and create vial
-      const initialAmountUnits = inventoryPeptide.concentration_per_vial_mcg / inventoryPeptide.typical_dose_mcg;
+      // Use initial doses per vial if available, otherwise calculate
+      const initialAmountUnits = inventoryPeptide.initial_doses_per_vial || 
+        Math.floor(inventoryPeptide.concentration_per_vial_mcg / inventoryPeptide.typical_dose_mcg);
       
-      const newVial: Vial = {
-        id: `${peptideId}_${Date.now()}`,
+      const vialId = `${peptideId}_${Date.now()}`;
+      const newVial = {
         isActive: true,
         initialAmountUnits,
         remainingAmountUnits: initialAmountUnits,
@@ -184,15 +194,21 @@ export const inventoryService = {
           new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
         ).toISOString(),
         bacWaterMl: inventoryPeptide.bac_water_volume_added || 2,
+        dateAdded: new Date().toISOString()
       };
 
-      // Deactivate other vials and add new one
-      const updatedVials = [
-        ...(peptide.vials || []).map(v => ({ ...v, isActive: false })),
-        newVial,
-      ];
+      // First deactivate all existing vials
+      const existingPeptide = await firebaseCleanService.getPeptideById(peptideId);
+      if (existingPeptide && existingPeptide.vials) {
+        for (const vial of existingPeptide.vials) {
+          const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vial.id);
+          await updateDoc(vialRef, { isActive: false });
+        }
+      }
 
-      await peptideService.updatePeptide(peptideId, { vials: updatedVials });
+      // Add new vial
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      await setDoc(vialRef, newVial);
       
       // Initialize usage tracking in batch_number field (0 doses used initially)
       await this.updatePeptideUsage(peptideId, 0);
@@ -212,24 +228,13 @@ export const inventoryService = {
     peptideName: string
   ): Promise<boolean> {
     try {
-      // First delete from peptides table (scheduling data)
-      const { error: peptidesError } = await supabase
-        .from('peptides')
-        .delete()
-        .eq('id', peptideId);
-      
-      if (peptidesError) {
-        console.error(`Error deleting peptide ${peptideName} from peptides table:`, peptidesError);
-        // Continue with deletion from inventory even if peptides deletion fails
-      }
+      // First delete from peptides collection (scheduling data)
+      const peptideRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+      await deleteDoc(peptideRef);
 
       // Then delete from inventory_peptides
-      const { error: inventoryError } = await supabase
-        .from('inventory_peptides')
-        .delete()
-        .eq('id', peptideId);
-
-      if (inventoryError) throw inventoryError;
+      const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      await deleteDoc(inventoryRef);
 
       return true;
     } catch (error) {
@@ -240,46 +245,31 @@ export const inventoryService = {
 
   // BAC Water
   async getBacWater(): Promise<InventoryBacWater[]> {
-    const { data, error } = await supabase
-      .from('inventory_bac_water')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
+    try {
+      return await firebaseCleanService.getInventoryBacWater();
+    } catch (error) {
       console.error('Error fetching BAC water:', error);
       return [];
     }
-
-    return data || [];
   },
 
   // Syringes
   async getSyringes(): Promise<InventorySyringe[]> {
-    const { data, error } = await supabase
-      .from('inventory_syringes')
-      .select('*')
-      .order('type_size');
-
-    if (error) {
+    try {
+      return await firebaseCleanService.getInventorySyringes();
+    } catch (error) {
       console.error('Error fetching syringes:', error);
       return [];
     }
-
-    return data || [];
   },
 
   // Other Items
   async getOtherItems(): Promise<InventoryOtherItem[]> {
-    const { data, error } = await supabase
-      .from('inventory_other_items')
-      .select('*')
-      .order('item_name');
-
-    if (error) {
+    try {
+      return await firebaseCleanService.getInventoryOtherItems();
+    } catch (error) {
       console.error('Error fetching other items:', error);
       return [];
     }
-
-    return data || [];
   },
 };

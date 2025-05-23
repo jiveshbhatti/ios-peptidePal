@@ -21,7 +21,8 @@ interface PeptideFormModalProps {
   visible: boolean;
   onClose: () => void;
   peptide?: InventoryPeptide; // For editing
-  onSave: () => void;
+  onSave?: () => void;
+  onSubmit?: (inventoryData: any, scheduleData: any) => void;
 }
 
 export default function PeptideFormModal({
@@ -29,6 +30,7 @@ export default function PeptideFormModal({
   onClose,
   peptide,
   onSave,
+  onSubmit,
 }: PeptideFormModalProps) {
   // Form state
   const [name, setName] = useState('');
@@ -42,6 +44,7 @@ export default function PeptideFormModal({
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [bacWaterVolume, setBacWaterVolume] = useState('');
   const [lowStockThreshold, setLowStockThreshold] = useState('');
+  const [initialDosesPerVial, setInitialDosesPerVial] = useState('');
   
   // Schedule state
   const [strength, setStrength] = useState('');
@@ -67,6 +70,10 @@ export default function PeptideFormModal({
       setBatchNumber(peptide.batch_number || '');
       setBacWaterVolume(peptide.bac_water_volume_added?.toString() || '');
       setLowStockThreshold(peptide.low_stock_threshold?.toString() || '');
+      // Initial doses would be calculated or stored
+      if (peptide.concentration_per_vial_mcg && peptide.typical_dose_mcg) {
+        setInitialDosesPerVial(Math.floor(peptide.concentration_per_vial_mcg / peptide.typical_dose_mcg).toString());
+      }
       
       // Handle expiry date
       if (peptide.expiry_date) {
@@ -158,6 +165,8 @@ export default function PeptideFormModal({
         bac_water_volume_added: bacWaterVolume ? Number(bacWaterVolume) : null,
         low_stock_threshold: lowStockThreshold ? Number(lowStockThreshold) : undefined,
         active_vial_status: 'NONE',
+        initial_doses_per_vial: initialDosesPerVial ? Number(initialDosesPerVial) : 
+          Math.floor(Number(concentration) / Number(typicalDose)),
       };
 
       // Prepare schedule data
@@ -174,24 +183,34 @@ export default function PeptideFormModal({
         typicalDosageUnits: Number(typicalDose),
         dosageUnit,
         notes,
+        initialDosesPerVial: initialDosesPerVial ? Number(initialDosesPerVial) : undefined,
       };
 
-      if (peptide) {
-        // Update existing peptide
-        await inventoryService.updatePeptideInInventory(
-          peptide.id,
-          inventoryData,
-          scheduleData
-        );
+      // If onSubmit is provided, let the parent handle the service calls
+      if (onSubmit) {
+        await onSubmit(inventoryData, scheduleData);
       } else {
-        // Add new peptide
-        await inventoryService.addPeptideToInventory(
-          inventoryData,
-          scheduleData
-        );
+        // Otherwise handle it internally
+        if (peptide) {
+          // Update existing peptide
+          await inventoryService.updatePeptideInInventory(
+            peptide.id,
+            inventoryData,
+            scheduleData
+          );
+        } else {
+          // Add new peptide
+          await inventoryService.addPeptideToInventory(
+            inventoryData,
+            scheduleData
+          );
+        }
+        
+        if (onSave) {
+          onSave();
+        }
       }
-
-      onSave();
+      
       resetForm();
       onClose();
     } catch (error) {
@@ -209,6 +228,7 @@ export default function PeptideFormModal({
     setBatchNumber('');
     setExpiryDate('');
     setLowStockThreshold('');
+    setInitialDosesPerVial('');
     setStrength('');
     setDosageUnit('mcg');
     setFrequency('daily');
@@ -294,6 +314,18 @@ export default function PeptideFormModal({
               />
               
               <Input
+                label="Initial Doses Per Vial"
+                value={initialDosesPerVial}
+                onChangeText={setInitialDosesPerVial}
+                placeholder={concentration && typicalDose ? 
+                  `${Math.floor(Number(concentration) / Number(typicalDose))} doses` : 
+                  "E.g., 20"}
+                keyboardType="numeric"
+                helperText="Number of doses when vial is full"
+                error={errors.initialDosesPerVial}
+              />
+              
+              <Input
                 label="Storage Location (optional)"
                 value={storageLocation}
                 onChangeText={setStorageLocation}
@@ -342,6 +374,15 @@ export default function PeptideFormModal({
                 onChangeText={setLowStockThreshold}
                 placeholder="E.g., 2"
                 keyboardType="numeric"
+              />
+              
+              <Input
+                label="Initial Doses per Vial (optional)"
+                value={initialDosesPerVial}
+                onChangeText={setInitialDosesPerVial}
+                placeholder="Auto-calculated if empty"
+                keyboardType="numeric"
+                helperText="If empty, will be calculated from concentration ÷ typical dose"
               />
             </View>
           ) : (

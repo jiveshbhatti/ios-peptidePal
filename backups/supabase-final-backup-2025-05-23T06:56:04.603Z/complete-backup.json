@@ -1,0 +1,21 @@
+{
+  "timestamp": "2025-05-23T06:56:04.603Z",
+  "supabaseUrl": "https://looltsvagvvjnspayhym.supabase.co",
+  "tables": {
+    "peptides": {
+      "error": "Invalid API key"
+    },
+    "inventory_peptides": {
+      "error": "Invalid API key"
+    },
+    "inventory_bac_water": {
+      "error": "Invalid API key"
+    },
+    "inventory_syringes": {
+      "error": "Invalid API key"
+    },
+    "inventory_other_items": {
+      "error": "Invalid API key"
+    }
+  }
+}

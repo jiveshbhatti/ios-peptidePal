@@ -411,6 +411,81 @@ const firebaseCleanService = {
     }
   },
   
+  async addPeptideToInventory(inventoryData, scheduleData) {
+    try {
+      if (DEBUG_FIREBASE) console.log('[Firebase Clean] Adding peptide to inventory...');
+      
+      // Generate a unique ID for both inventory and peptide entries
+      const peptideId = doc(collection(firestoreDbClean, 'temp')).id;
+      
+      // Create inventory entry
+      const inventoryDocRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      await setDoc(inventoryDocRef, {
+        ...inventoryData,
+        id: peptideId,
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp()
+      });
+      
+      // Create corresponding peptide entry for scheduling
+      const peptideDocRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+      await setDoc(peptideDocRef, {
+        id: peptideId,
+        name: inventoryData.name,
+        strength: scheduleData.strength || '',
+        typicalDosageUnits: scheduleData.typicalDosageUnits,
+        dosageUnit: scheduleData.dosageUnit || 'mcg',
+        schedule: scheduleData.schedule,
+        startDate: scheduleData.startDate || null,
+        notes: scheduleData.notes || '',
+        dataAiHint: scheduleData.dataAiHint || '',
+        imageUrl: null,
+        // Store initial doses info for future vial activation
+        initialDosesPerVial: inventoryData.initial_doses_per_vial || 
+          Math.floor(inventoryData.concentration_per_vial_mcg / inventoryData.typical_dose_mcg)
+      });
+      
+      // Create an empty vials subcollection
+      const vialsCollection = collection(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS);
+      // No need to create empty collection, it will be created when first vial is added
+      
+      this._log('addPeptideToInventory', `${COLLECTION.INVENTORY_PEPTIDES}/${peptideId}`, true);
+      this._log('addPeptideToInventory', `${COLLECTION.PEPTIDES}/${peptideId}`, true);
+      
+      return true;
+    } catch (error) {
+      console.error('[Firebase Clean] Error adding peptide to inventory:', error);
+      this._log('addPeptideToInventory', `inventory/peptide creation`, false);
+      throw error;
+    }
+  },
+  
+  async updatePeptideInInventory(peptideId, inventoryUpdates, scheduleUpdates) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Updating inventory peptide ${peptideId}...`);
+      
+      // Update inventory entry
+      const inventoryDocRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+      await updateDoc(inventoryDocRef, {
+        ...inventoryUpdates,
+        updated_at: serverTimestamp()
+      });
+      
+      // Update peptide if schedule updates provided
+      if (scheduleUpdates) {
+        const peptideDocRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId);
+        await updateDoc(peptideDocRef, scheduleUpdates);
+      }
+      
+      this._log('updatePeptideInInventory', `${COLLECTION.INVENTORY_PEPTIDES}/${peptideId}`, true);
+      return true;
+    } catch (error) {
+      console.error(`[Firebase Clean] Error updating inventory peptide ${peptideId}:`, error);
+      this._log('updatePeptideInInventory', `${COLLECTION.INVENTORY_PEPTIDES}/${peptideId}`, false);
+      throw error;
+    }
+  },
+  
   async removeDoseLog(peptideId, doseLogId) {
     try {
       if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Removing dose log ${doseLogId} from peptide ${peptideId}...`);

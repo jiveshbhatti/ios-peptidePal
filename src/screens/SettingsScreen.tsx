@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
 import { theme } from '@/constants/theme';
-import DevControls from '@/components/ui/DevControls';
 import { config } from '../config';
 
 export default function SettingsScreen() {
@@ -22,15 +21,6 @@ export default function SettingsScreen() {
     );
   };
   
-  // Handle environment switch
-  const handleEnvironmentSwitch = () => {
-    // This would be where you might add code to reload data after environment switch
-    Alert.alert(
-      'Database Environment Changed',
-      'Please restart the app to ensure all data is loaded from the new environment.',
-      [{ text: 'OK' }]
-    );
-  };
   
   return (
     <ScrollView style={styles.container}>
@@ -89,31 +79,8 @@ export default function SettingsScreen() {
                     text: 'Sync Safely', 
                     onPress: async () => {
                       try {
-                        // Check if development database is set to default value
-                        if (config.supabase.url.includes('your-dev-instance.supabase.co')) {
-                          Alert.alert(
-                            'Development Database Not Configured',
-                            'You need to set up a development database before syncing. Would you like to see instructions?',
-                            [
-                              { text: 'Not Now', style: 'cancel' },
-                              { 
-                                text: 'View Setup Guide', 
-                                onPress: () => {
-                                  Alert.alert(
-                                    'Development Database Setup',
-                                    '1. Create a new Supabase project from https://supabase.com\n\n' +
-                                    '2. Get your database URL and anon key from the API settings\n\n' +
-                                    '3. Update the DEV_DB object in src/config.ts with your credentials\n\n' +
-                                    '4. Restart the app\n\n' +
-                                    'See DEV_SETUP.md for complete instructions.',
-                                    [{ text: 'OK' }]
-                                  );
-                                }
-                              }
-                            ]
-                          );
-                          return;
-                        }
+                        // Firebase doesn't need separate dev/prod databases
+                        // Data sync is not currently implemented for Firebase
                         
                         // Show loading indicator
                         Alert.alert('Syncing...', 'Downloading data from production to development database. This may take a moment.');
@@ -198,13 +165,9 @@ export default function SettingsScreen() {
       
       {/* Version and Build Info */}
       <View style={styles.versionInfo}>
-        <Text style={styles.versionText}>PeptidePal v{config.version}</Text>
+        <Text style={styles.versionText}>PeptidePal v1.0.0</Text>
       </View>
       
-      {/* Dev Controls */}
-      {__DEV__ && (
-        <DevControls onEnvironmentSwitch={handleEnvironmentSwitch} />
-      )}
     </ScrollView>
   );
 }
