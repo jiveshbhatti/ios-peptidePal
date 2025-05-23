@@ -211,20 +211,15 @@ export function getDrawVolumeForPeptide(
 ): number {
   const activeVial = peptide.vials?.find(v => v.isActive);
   
-  // Debug logging for Glow
-  if (peptide.name === 'Glow') {
-    console.log('=== Glow Draw Volume Debug ===');
+  // Debug logging for peptides without volume display
+  if ((peptide.name === 'Glow' || peptide.name === 'NAD+') && activeVial) {
+    console.log(`=== ${peptide.name} Draw Volume Debug ===`);
     console.log('Peptide typical dose:', peptide.typicalDosageUnits);
-    console.log('Active vial:', activeVial);
+    console.log('Active vial has BAC water:', !!activeVial.reconstitutionBacWaterMl);
+    console.log('Active vial has total MCG:', !!activeVial.totalPeptideInVialMcg);
     if (activeVial) {
       console.log('  reconstitutionBacWaterMl:', activeVial.reconstitutionBacWaterMl);
       console.log('  totalPeptideInVialMcg:', activeVial.totalPeptideInVialMcg);
-    }
-    console.log('Inventory peptide:', inventoryPeptide);
-    if (inventoryPeptide) {
-      console.log('  bac_water_volume_added:', inventoryPeptide.bac_water_volume_added);
-      console.log('  concentration_per_vial_mcg:', inventoryPeptide.concentration_per_vial_mcg);
-      console.log('  typical_dose_mcg:', inventoryPeptide.typical_dose_mcg);
     }
   }
   
@@ -234,16 +229,22 @@ export function getDrawVolumeForPeptide(
     
     // Special handling for peptides if totalPeptideInVialMcg is missing
     if (!totalMcgInVial) {
-      // Default vial sizes for known peptides
-      const defaultVialSizes: { [key: string]: number } = {
-        'Glow': 10000,     // 10mg = 10000mcg
-        'NAD+': 1000000,   // 1000mg = 1,000,000mcg (NAD+ typically comes in 1g vials)
-        'Retatrutide': 10000, // 10mg = 10000mcg
-      };
-      
-      if (defaultVialSizes[peptide.name]) {
-        totalMcgInVial = defaultVialSizes[peptide.name];
-        console.log(`Using default ${totalMcgInVial}mcg for ${peptide.name} vial`);
+      // Try to get from inventory data first
+      if (inventoryPeptide?.concentration_per_vial_mcg) {
+        totalMcgInVial = inventoryPeptide.concentration_per_vial_mcg;
+        console.log(`Using inventory concentration ${totalMcgInVial}mcg for ${peptide.name}`);
+      } else {
+        // Default vial sizes for known peptides
+        const defaultVialSizes: { [key: string]: number } = {
+          'Glow': 10000,     // 10mg = 10000mcg
+          'NAD+': 500000,    // 500mg = 500,000mcg (based on your screenshot)
+          'Retatrutide': 10000, // 10mg = 10000mcg
+        };
+        
+        if (defaultVialSizes[peptide.name]) {
+          totalMcgInVial = defaultVialSizes[peptide.name];
+          console.log(`Using default ${totalMcgInVial}mcg for ${peptide.name} vial`);
+        }
       }
     }
     
@@ -251,8 +252,8 @@ export function getDrawVolumeForPeptide(
     const bacWaterMl = activeVial.reconstitutionBacWaterMl;
     
     const result = calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
-    if (peptide.name === 'Glow') {
-      console.log('Calculated from vial:', result);
+    if (peptide.name === 'Glow' || peptide.name === 'NAD+') {
+      console.log(`Calculated volume for ${peptide.name}: ${result} units`);
     }
     return result;
   }
@@ -267,14 +268,14 @@ export function getDrawVolumeForPeptide(
       inventoryPeptide.concentration_per_vial_mcg,
       inventoryPeptide.bac_water_volume_added
     );
-    if (peptide.name === 'Glow') {
-      console.log('Calculated from inventory:', result);
+    if (peptide.name === 'Glow' || peptide.name === 'NAD+') {
+      console.log(`Calculated from inventory for ${peptide.name}: ${result} units`);
     }
     return result;
   }
   
-  if (peptide.name === 'Glow') {
-    console.log('No BAC water data found, returning 0');
+  if (peptide.name === 'Glow' || peptide.name === 'NAD+') {
+    console.log(`No BAC water data found for ${peptide.name}, returning 0`);
   }
   
   return 0;
