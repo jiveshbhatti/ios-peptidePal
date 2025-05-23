@@ -224,10 +224,10 @@ export default function PeptideDetailsScreen() {
     try {
       await firebaseCleanService.deleteVial(peptideId, vialId);
       await refreshData();
-      AppHaptics.notificationSuccess();
+      AppHaptics.success();
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to delete vial');
-      AppHaptics.notificationError();
+      AppHaptics.error();
     }
   }, [peptideId, refreshData]);
 
@@ -235,11 +235,11 @@ export default function PeptideDetailsScreen() {
     try {
       await firebaseCleanService.discardVial(peptideId, vialId, reason);
       await refreshData();
-      AppHaptics.notificationSuccess();
+      AppHaptics.success();
       Alert.alert('Success', 'Vial has been discarded');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to discard vial');
-      AppHaptics.notificationError();
+      AppHaptics.error();
     }
   }, [peptideId, refreshData]);
 
@@ -249,10 +249,10 @@ export default function PeptideDetailsScreen() {
       await refreshData();
       setShowEditModal(false);
       setEditingVial(null);
-      AppHaptics.notificationSuccess();
+      AppHaptics.success();
     } catch (error) {
       Alert.alert('Error', 'Failed to update vial');
-      AppHaptics.notificationError();
+      AppHaptics.error();
     }
   }, [peptideId, refreshData]);
 
@@ -270,10 +270,10 @@ export default function PeptideDetailsScreen() {
       await refreshData();
       setShowEditModal(false);
       setEditingVial(null);
-      AppHaptics.notificationSuccess();
+      AppHaptics.success();
     } catch (error) {
       Alert.alert('Error', 'Failed to recalculate doses');
-      AppHaptics.notificationError();
+      AppHaptics.error();
     }
   }, [peptideId, peptide, refreshData]);
 
