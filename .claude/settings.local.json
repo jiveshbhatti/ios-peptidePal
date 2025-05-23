@@ -64,7 +64,16 @@
       "Bash(firebase deploy:*)",
       "Bash(firebase setup:web:*)",
       "Bash(firebase init:*)",
-      "Bash(mv:*)"
+      "Bash(mv:*)",
+      "Bash(git -C /Users/jiveshbhatti/Desktop/studio remote -v)",
+      "Bash(git -C /Users/jiveshbhatti/Desktop/studio checkout -b firebase-integration)",
+      "Bash(git -C /Users/jiveshbhatti/Desktop/studio add .)",
+      "Bash(git -C /Users/jiveshbhatti/Desktop/studio commit -m \"Complete Firebase integration with database switching\n\n- Added Firebase configuration and service layer matching mobile app\n- Implemented DatabaseContext for switching between Supabase and Firebase\n- Created DatabaseSwitcher UI component with connection testing  \n- Added database test page for verification\n- Updated main page to use database context instead of direct service calls\n- Enables data synchronization between web and mobile apps\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\")",
+      "Bash(npx:*)",
+      "Bash(PLAYWRIGHT_BROWSERS_PATH=0 npx --prefix /Users/jiveshbhatti/Desktop/studio playwright test --config=/Users/jiveshbhatti/Desktop/studio/playwright.config.ts --reporter=list)",
+      "Bash(curl:*)",
+      "Bash(true)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
