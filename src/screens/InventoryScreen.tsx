@@ -13,8 +13,6 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
-import { FlashList } from '@shopify/flash-list';
-import { SwipeListView } from 'react-native-swipe-list-view';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
@@ -76,39 +74,9 @@ export default function InventoryScreen() {
 
   const handlePeptidePress = useCallback((peptide: InventoryPeptide) => {
     AppHaptics.buttonTap();
-    setSelectedPeptide(peptide);
-    setShowFormModal(true);
-  }, []);
-
-  const handleActivateVial = useCallback(async (peptide: InventoryPeptide) => {
-    if (peptide.num_vials <= 0) {
-      AppHaptics.error();
-      Alert.alert('No Vials', 'No vials available to activate');
-      return;
-    }
-
-    AppHaptics.activateVial();
-    Alert.alert(
-      'Activate Vial',
-      `Activate a new vial of ${peptide.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Activate',
-          onPress: async () => {
-            try {
-              await inventoryService.activatePeptideVial(peptide.id, new Date().toISOString());
-              AppHaptics.success();
-              await refreshData();
-            } catch (error) {
-              AppHaptics.error();
-              Alert.alert('Error', 'Failed to activate vial');
-            }
-          },
-        },
-      ]
-    );
-  }, [refreshData]);
+    // Navigate to peptide details screen
+    navigation.navigate('PeptideDetails', { peptideId: peptide.id });
+  }, [navigation]);
 
 
   const handleRefresh = useCallback(async () => {
@@ -138,22 +106,15 @@ export default function InventoryScreen() {
         peptide={item}
         schedulePeptide={schedulePeptide}
         onPress={() => handlePeptidePress(item)}
-        onLongPress={() => navigation.navigate('PeptideDetails', { peptideId: item.id })}
+        onLongPress={() => {
+          AppHaptics.longPress();
+          setSelectedPeptide(item);
+          setShowFormModal(true);
+        }}
       />
     );
   }, [handlePeptidePress, peptides, navigation]);
 
-  const renderHiddenItem = useCallback((data: { item: InventoryPeptide }) => (
-    <View style={styles.rowBack}>
-      <TouchableOpacity
-        style={[styles.backButton, styles.activateButton]}
-        onPress={() => handleActivateVial(data.item)}
-      >
-        <Icon.CheckCircle width={20} height={20} stroke="white" />
-        <Text style={styles.backButtonText}>Activate</Text>
-      </TouchableOpacity>
-    </View>
-  ), [handleActivateVial]);
 
   const keyExtractor = useCallback((item: InventoryPeptide) => item.id, []);
 
@@ -164,7 +125,7 @@ export default function InventoryScreen() {
         <Text style={styles.sectionCount}>({section.data.length})</Text>
       </View>
       {section.title === 'Inactive Stock' && (
-        <Text style={styles.sectionHint}>Tap to edit • Swipe left to activate vial</Text>
+        <Text style={styles.sectionHint}>Tap to view details and manage vials</Text>
       )}
     </View>
   ), []);
@@ -195,25 +156,11 @@ export default function InventoryScreen() {
       }
 
       return (
-        <SwipeListView
-          useSectionList
+        <SectionList
           sections={sections}
           renderItem={renderPeptideItem}
-          renderHiddenItem={renderHiddenItem}
           renderSectionHeader={renderSectionHeader}
           keyExtractor={keyExtractor}
-          leftOpenValue={85}
-          disableRightSwipe
-          closeOnRowOpen={true}
-          closeOnRowBeginSwipe={false}
-          closeOnScroll={true}
-          friction={100}
-          tension={40}
-          onSwipeValueChange={(swipeData) => {
-            if (Math.abs(swipeData.value) > 20) {
-              AppHaptics.swipeAction();
-            }
-          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -371,39 +318,5 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[500],
     marginTop: theme.spacing.xs,
     textAlign: 'center',
-  },
-  hiddenItemContainer: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingRight: theme.spacing.md,
-    height: '100%',
-  },
-  rowBack: {
-    alignItems: 'center',
-    backgroundColor: theme.colors.background,
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    paddingRight: theme.spacing.md,
-  },
-  backButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 85,
-    height: '90%',
-    marginLeft: theme.spacing.xs,
-    borderRadius: theme.borderRadius.md,
-  },
-  activateButton: {
-    backgroundColor: theme.colors.secondary,
-  },
-  backButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 4,
   },
 });

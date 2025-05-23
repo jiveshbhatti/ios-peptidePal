@@ -31,15 +31,16 @@ export default function PeptideDetailsScreen() {
   const route = useRoute<PeptideDetailsRouteProp>();
   const navigation = useNavigation<PeptideDetailsNavigationProp>();
   const { peptideId } = route.params;
-  const { peptides, loading, refreshData } = useData();
+  const { peptides, inventoryPeptides, loading, refreshData } = useData();
   const { service } = useDatabase();
   
   const [selectedTab, setSelectedTab] = useState<'overview' | 'history' | 'stats'>('overview');
   const [refreshing, setRefreshing] = useState(false);
   
   const peptide = peptides.find(p => p.id === peptideId);
+  const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptideId);
   const activeVial = peptide?.vials?.find(v => v.isActive);
-  const remainingDoses = calculateRemainingDoses(peptide);
+  const remainingDoses = calculateRemainingDoses(peptide, inventoryPeptide);
   
   useEffect(() => {
     if (peptide) {
@@ -142,11 +143,54 @@ export default function PeptideDetailsScreen() {
     return expectedDoses > 0 ? Math.round((actualDoses / expectedDoses) * 100) : 0;
   };
 
-  const handleActivateNewVial = () => {
-    Alert.alert(
+  const handleActivateNewVial = async () => {
+    if (!peptide || !inventoryPeptide) {
+      Alert.alert('Error', 'Cannot activate vial - peptide data not found');
+      return;
+    }
+
+    if (inventoryPeptide.num_vials <= 0) {
+      AppHaptics.error();
+      Alert.alert('No Vials', 'No vials available to activate');
+      return;
+    }
+
+    AppHaptics.activateVial();
+    
+    // Prompt for BAC water amount
+    Alert.prompt(
       'Activate New Vial',
-      'This feature will be available after inventory integration.',
-      [{ text: 'OK' }]
+      `Enter the amount of BAC water (mL) to reconstitute ${peptide.name}:`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Activate',
+          onPress: async (bacWaterAmount) => {
+            if (!bacWaterAmount || isNaN(parseFloat(bacWaterAmount))) {
+              Alert.alert('Error', 'Please enter a valid amount');
+              return;
+            }
+
+            try {
+              await inventoryService.activatePeptideVial(
+                peptide.id, 
+                new Date().toISOString(),
+                parseFloat(bacWaterAmount)
+              );
+              AppHaptics.success();
+              await refreshData();
+              Alert.alert('Success', 'New vial activated successfully!');
+            } catch (error) {
+              AppHaptics.error();
+              console.error('Error activating vial:', error);
+              Alert.alert('Error', 'Failed to activate vial');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '2', // Default to 2mL
+      'numeric'
     );
   };
 
@@ -264,12 +308,35 @@ export default function PeptideDetailsScreen() {
               </View>
             </View>
 
-            {/* Actions */}
-            {(!activeVial || remainingDoses <= 0) && (
-              <TouchableOpacity style={styles.actionButton} onPress={handleActivateNewVial}>
-                <Icon.Plus stroke="white" width={20} height={20} />
-                <Text style={styles.actionButtonText}>Activate New Vial</Text>
-              </TouchableOpacity>
+            {/* Inventory Info */}
+            {inventoryPeptide && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Inventory</Text>
+                <View style={styles.inventoryInfo}>
+                  <View style={styles.inventoryRow}>
+                    <Icon.Package stroke={theme.colors.gray[500]} width={18} height={18} />
+                    <Text style={styles.inventoryLabel}>Stock:</Text>
+                    <Text style={styles.inventoryValue}>{inventoryPeptide.num_vials} vials</Text>
+                  </View>
+                  {inventoryPeptide.concentration_per_vial_mcg && (
+                    <View style={styles.inventoryRow}>
+                      <Icon.Activity stroke={theme.colors.gray[500]} width={18} height={18} />
+                      <Text style={styles.inventoryLabel}>Concentration:</Text>
+                      <Text style={styles.inventoryValue}>
+                        {inventoryPeptide.concentration_per_vial_mcg}mcg/vial
+                      </Text>
+                    </View>
+                  )}
+                </View>
+                
+                {/* Actions */}
+                {(!activeVial || remainingDoses <= 0) && inventoryPeptide.num_vials > 0 && (
+                  <TouchableOpacity style={styles.actionButton} onPress={handleActivateNewVial}>
+                    <Icon.Plus stroke="white" width={20} height={20} />
+                    <Text style={styles.actionButtonText}>Activate New Vial</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
             )}
           </>
         )}
@@ -466,6 +533,24 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[500],
     textAlign: 'center',
     paddingVertical: theme.spacing.xl,
+  },
+  inventoryInfo: {
+    gap: theme.spacing.sm,
+  },
+  inventoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+  },
+  inventoryLabel: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[600],
+    flex: 1,
+  },
+  inventoryValue: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[800],
+    fontWeight: '500',
   },
   summaryCard: {
     backgroundColor: theme.colors.background,

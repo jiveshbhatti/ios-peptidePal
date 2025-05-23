@@ -133,7 +133,8 @@ export const inventoryService = {
 
   async activatePeptideVial(
     peptideId: string,
-    reconstitutionDate: string
+    reconstitutionDate: string,
+    bacWaterAmount?: number
   ): Promise<boolean> {
     try {
       // Get inventory peptide
@@ -146,7 +147,7 @@ export const inventoryService = {
       
       const inventoryPeptide = { id: inventorySnap.id, ...inventorySnap.data() } as any;
 
-      // Update inventory (decrement vials, set active status)
+      // Update inventory (decrement vials, set active status, store BAC water amount)
       await updateDoc(inventoryRef, {
         num_vials: inventoryPeptide.num_vials - 1,
         active_vial_status: 'IN_USE',
@@ -154,6 +155,7 @@ export const inventoryService = {
         active_vial_expiry_date: new Date(
           new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
         ).toISOString(),
+        bac_water_volume_added: bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2,
         updated_at: serverTimestamp()
       });
 
@@ -186,6 +188,7 @@ export const inventoryService = {
       
       const vialId = `${peptideId}_${Date.now()}`;
       const newVial = {
+        id: vialId,
         isActive: true,
         initialAmountUnits,
         remainingAmountUnits: initialAmountUnits,
@@ -193,8 +196,10 @@ export const inventoryService = {
         expirationDate: new Date(
           new Date(reconstitutionDate).getTime() + 30 * 24 * 60 * 60 * 1000
         ).toISOString(),
-        bacWaterMl: inventoryPeptide.bac_water_volume_added || 2,
-        dateAdded: new Date().toISOString()
+        reconstitutionBacWaterMl: bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2,
+        totalPeptideInVialMcg: inventoryPeptide.concentration_per_vial_mcg || 0,
+        dateAdded: new Date().toISOString(),
+        notes: `Activated with ${bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2}mL BAC water`
       };
 
       // First deactivate all existing vials
