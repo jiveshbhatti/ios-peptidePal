@@ -2,8 +2,15 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
 import { theme } from '@/constants/theme';
 import { config } from '../config';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '@/navigation/RootNavigator';
+import * as Icon from 'react-native-feather';
+
+type SettingsNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
 export default function SettingsScreen() {
+  const navigation = useNavigation<SettingsNavigationProp>();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   
@@ -60,9 +67,17 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Account</Text>
         
-        <TouchableOpacity style={styles.settingButton}>
-          <Text style={styles.settingLabel}>My Profile</Text>
-          <Text style={styles.settingDescription}>View and edit your profile information</Text>
+        <TouchableOpacity 
+          style={styles.settingButton}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <View style={styles.settingContent}>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingLabel}>My Profile</Text>
+              <Text style={styles.settingDescription}>View metrics and track progress</Text>
+            </View>
+            <Icon.ChevronRight color={theme.colors.gray[400]} width={20} height={20} />
+          </View>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -244,5 +259,13 @@ const styles = StyleSheet.create({
     color: theme.colors.danger,
     fontSize: 10,
     fontWeight: 'bold',
+  },
+  settingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingTextContainer: {
+    flex: 1,
   },
 });
