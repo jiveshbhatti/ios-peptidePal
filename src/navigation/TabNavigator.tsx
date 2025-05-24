@@ -22,9 +22,9 @@ export default function TabNavigator() {
           backgroundColor: theme.colors.background,
           borderTopColor: theme.colors.gray[100],
           borderTopWidth: 1,
-          paddingBottom: 5,
-          paddingTop: 5,
-          height: 60,
+          paddingBottom: 12,
+          paddingTop: 8,
+          height: 72,
         },
         headerStyle: {
           backgroundColor: theme.colors.background,
