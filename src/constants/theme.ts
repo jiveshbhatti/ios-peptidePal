@@ -4,6 +4,7 @@ export const theme = {
     primaryLight: '#E0F2F1',
     secondary: '#10B981',
     secondaryLight: '#E6F7EF',
+    success: '#22C55E',
     warning: '#F59E0B',
     error: '#EF4444',
     gray: {
