@@ -189,7 +189,10 @@ class NotificationService {
                   },
                   categoryIdentifier: 'dose_reminder',
                 },
-                trigger: notificationTime,
+                trigger: {
+                  type: 'date',
+                  date: notificationTime,
+                },
               });
 
               notifications.push({
@@ -233,7 +236,10 @@ class NotificationService {
         data: data,
         categoryIdentifier: 'dose_reminder',
       },
-      trigger: snoozeTime,
+      trigger: {
+        type: 'date',
+        date: snoozeTime,
+      },
     });
   }
 
@@ -270,7 +276,10 @@ class NotificationService {
               daysUntilExpiry: daysBefore,
             },
           },
-          trigger: alertDate,
+          trigger: {
+            type: 'date',
+            date: alertDate,
+          },
         });
       }
     }
