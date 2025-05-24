@@ -21,7 +21,8 @@
       },
       "infoPlist": {
         "NSCalendarsUsageDescription": "PeptidePal needs access to your calendar to help schedule peptide doses.",
-        "NSPhotoLibraryUsageDescription": "PeptidePal needs access to your photo library to save peptide images."
+        "NSPhotoLibraryUsageDescription": "PeptidePal needs access to your photo library to save peptide images.",
+        "NSUserNotificationUsageDescription": "PeptidePal sends notifications to remind you when it's time to take your doses and alerts you about expiring vials."
       }
     },
     "android": {
@@ -52,6 +53,14 @@
         "expo-calendar",
         {
           "calendarPermission": "PeptidePal needs access to your calendar to help schedule peptide doses."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#008080",
+          "sounds": []
         }
       ]
     ],
