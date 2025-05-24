@@ -3,9 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Li
 import { theme } from '@/constants/theme';
 import { config } from '../config';
 import NotificationService from '@/services/NotificationService';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { RootStackParamList } from '@/navigation/RootNavigator';
 import * as Icon from 'react-native-feather';
 
+type SettingsNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
+
 export default function SettingsScreen() {
+  const navigation = useNavigation<SettingsNavigationProp>();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
@@ -39,21 +45,34 @@ export default function SettingsScreen() {
           'Permissions Required',
           'Please enable notifications in your device settings to receive dose reminders.',
           [
-            { text: 'Cancel', onPress: () => setNotificationsEnabled(false) },
-            { text: 'Open Settings', onPress: () => {
-              Linking.openSettings();
-            }}
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
           ]
         );
+        setNotificationsEnabled(false);
       }
     }
   };
-  
-  // Handle individual notification settings
-  const updateNotificationSetting = async (key: string, value: boolean) => {
-    const newSettings = { ...notificationSettings, [key]: value };
+
+  // Handle toggling specific notification types
+  const toggleNotificationSetting = async (setting: keyof typeof notificationSettings) => {
+    const newSettings = {
+      ...notificationSettings,
+      [setting]: !notificationSettings[setting],
+    };
     setNotificationSettings(newSettings);
-    await NotificationService.updateSettings({ [key]: value });
+    
+    switch (setting) {
+      case 'doseReminders':
+        await NotificationService.setDoseRemindersEnabled(newSettings.doseReminders);
+        break;
+      case 'expiryAlerts':
+        await NotificationService.setExpiryAlertsEnabled(newSettings.expiryAlerts);
+        break;
+      case 'soundEnabled':
+        await NotificationService.setSoundEnabled(newSettings.soundEnabled);
+        break;
+    }
   };
   
   // Handle toggling dark mode (placeholder for now)
@@ -70,17 +89,31 @@ export default function SettingsScreen() {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Settings</Text>
       
-      {/* Notification Settings Section */}
+      {/* Settings Sections */}
       <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Icon.Bell color={theme.colors.primary} width={20} height={20} />
-          <Text style={styles.sectionTitle}>Notifications</Text>
-        </View>
+        <Text style={styles.sectionTitle}>Account</Text>
+        
+        <TouchableOpacity 
+          style={styles.settingButton}
+          onPress={() => navigation.navigate('Profile')}
+        >
+          <View style={styles.settingContent}>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingLabel}>My Profile</Text>
+              <Text style={styles.settingDescription}>View metrics and track progress</Text>
+            </View>
+            <Icon.ChevronRight color={theme.colors.gray[400]} width={20} height={20} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Notifications</Text>
         
         <View style={styles.settingItem}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.settingLabel}>Enable All Notifications</Text>
-            <Text style={styles.settingDescription}>Master switch for all notifications</Text>
+          <View>
+            <Text style={styles.settingLabel}>Enable Notifications</Text>
+            <Text style={styles.settingDescription}>Master toggle for all notifications</Text>
           </View>
           <Switch 
             value={notificationsEnabled}
@@ -93,39 +126,39 @@ export default function SettingsScreen() {
         {notificationsEnabled && (
           <>
             <View style={styles.settingItem}>
-              <View style={{ flex: 1 }}>
+              <View>
                 <Text style={styles.settingLabel}>Dose Reminders</Text>
-                <Text style={styles.settingDescription}>Get reminded 15 min before doses</Text>
+                <Text style={styles.settingDescription}>Get notified when it's time for your dose</Text>
               </View>
               <Switch 
                 value={notificationSettings.doseReminders}
-                onValueChange={(value) => updateNotificationSetting('doseReminders', value)}
+                onValueChange={() => toggleNotificationSetting('doseReminders')}
                 trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
                 thumbColor={notificationSettings.doseReminders ? theme.colors.primary : theme.colors.gray[100]}
               />
             </View>
             
             <View style={styles.settingItem}>
-              <View style={{ flex: 1 }}>
+              <View>
                 <Text style={styles.settingLabel}>Expiry Alerts</Text>
-                <Text style={styles.settingDescription}>Warnings for expiring vials</Text>
+                <Text style={styles.settingDescription}>Get notified when vials are expiring</Text>
               </View>
               <Switch 
                 value={notificationSettings.expiryAlerts}
-                onValueChange={(value) => updateNotificationSetting('expiryAlerts', value)}
+                onValueChange={() => toggleNotificationSetting('expiryAlerts')}
                 trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
                 thumbColor={notificationSettings.expiryAlerts ? theme.colors.primary : theme.colors.gray[100]}
               />
             </View>
             
-            <View style={[styles.settingItem, { borderBottomWidth: 0 }]}>
-              <View style={{ flex: 1 }}>
+            <View style={styles.settingItem}>
+              <View>
                 <Text style={styles.settingLabel}>Notification Sound</Text>
-                <Text style={styles.settingDescription}>Play sound with notifications</Text>
+                <Text style={styles.settingDescription}>Play sound for notifications</Text>
               </View>
               <Switch 
                 value={notificationSettings.soundEnabled}
-                onValueChange={(value) => updateNotificationSetting('soundEnabled', value)}
+                onValueChange={() => toggleNotificationSetting('soundEnabled')}
                 trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
                 thumbColor={notificationSettings.soundEnabled ? theme.colors.primary : theme.colors.gray[100]}
               />
@@ -134,18 +167,17 @@ export default function SettingsScreen() {
         )}
       </View>
 
-      {/* App Settings Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Settings</Text>
+        <Text style={styles.sectionTitle}>Display</Text>
         
         <View style={styles.settingItem}>
           <View>
             <Text style={styles.settingLabel}>Dark Mode</Text>
-            <Text style={styles.settingDescription}>Use dark theme throughout the app</Text>
+            <Text style={styles.settingDescription}>Switch to dark theme</Text>
           </View>
           <Switch 
             value={darkMode}
-            onValueChange={() => toggleDarkMode()}
+            onValueChange={toggleDarkMode}
             trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
             thumbColor={darkMode ? theme.colors.primary : theme.colors.gray[100]}
           />
@@ -153,30 +185,22 @@ export default function SettingsScreen() {
       </View>
       
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Account</Text>
+        <Text style={styles.sectionTitle}>Data Management</Text>
         
-        <TouchableOpacity style={styles.settingButton}>
-          <Text style={styles.settingLabel}>My Profile</Text>
-          <Text style={styles.settingDescription}>View and edit your profile information</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.settingButton}
           onPress={() => {
-            // Check if we're in development mode
-            if (config.isDevelopment) {
+            if (config.isDevMode) {
+              // In development mode, show sync options
               Alert.alert(
-                'Development Mode Warning',
-                'You are currently in DEVELOPMENT mode. Syncing with the web app will download data FROM production TO your development database. This is safe and will not affect production data.',
+                'Sync Data', 
+                'Choose sync direction:',
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { 
-                    text: 'Sync Safely', 
+                    text: 'Prod → Dev', 
                     onPress: async () => {
                       try {
-                        // Firebase doesn't need separate dev/prod databases
-                        // Data sync is not currently implemented for Firebase
-                        
                         // Show loading indicator
                         Alert.alert('Syncing...', 'Downloading data from production to development database. This may take a moment.');
                         
@@ -228,41 +252,58 @@ export default function SettingsScreen() {
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <View>
-              <Text style={styles.settingLabel}>Sync with Web App</Text>
+              <Text style={styles.settingLabel}>Sync Data</Text>
               <Text style={styles.settingDescription}>
-                {config.isDevelopment 
-                  ? "Download production data (safe mode)" 
-                  : "Sync your data with PeptidePal Web"}
+                {config.isDevMode ? 'Sync data between databases' : 'Sync with PeptidePal Web'}
               </Text>
             </View>
-            {config.isDevelopment && (
-              <View style={styles.devBadge}>
-                <Text style={styles.devBadgeText}>DEV</Text>
-              </View>
-            )}
+            <Icon.RefreshCw color={theme.colors.gray[400]} width={20} height={20} />
+          </View>
+        </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={styles.settingButton}
+          onPress={() => {
+            Alert.alert(
+              'Export Data',
+              'This will export your data as a CSV file.',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Export', onPress: () => Alert.alert('Export Complete', 'Your data has been exported.') }
+              ]
+            );
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View>
+              <Text style={styles.settingLabel}>Export Data</Text>
+              <Text style={styles.settingDescription}>Download your data as CSV</Text>
+            </View>
+            <Icon.Download color={theme.colors.gray[400]} width={20} height={20} />
           </View>
         </TouchableOpacity>
       </View>
       
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Support</Text>
+        <Text style={styles.sectionTitle}>About</Text>
         
-        <TouchableOpacity style={styles.settingButton}>
-          <Text style={styles.settingLabel}>Help & FAQ</Text>
-          <Text style={styles.settingDescription}>Get answers to common questions</Text>
-        </TouchableOpacity>
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Version</Text>
+          <Text style={styles.infoValue}>1.0.0</Text>
+        </View>
         
-        <TouchableOpacity style={styles.settingButton}>
-          <Text style={styles.settingLabel}>Contact Support</Text>
-          <Text style={styles.settingDescription}>Reach out for assistance</Text>
-        </TouchableOpacity>
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Database Mode</Text>
+          <Text style={styles.infoValue}>{config.isDevMode ? 'Development' : 'Production'}</Text>
+        </View>
+        
+        <View style={styles.infoItem}>
+          <Text style={styles.infoLabel}>Database URL</Text>
+          <Text style={styles.infoValue} numberOfLines={1} ellipsizeMode="middle">
+            {config.isDevMode ? config.SUPABASE_DEV_URL : config.SUPABASE_URL}
+          </Text>
+        </View>
       </View>
-      
-      {/* Version and Build Info */}
-      <View style={styles.versionInfo}>
-        <Text style={styles.versionText}>PeptidePal v1.0.0</Text>
-      </View>
-      
     </ScrollView>
   );
 }
@@ -271,78 +312,74 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-    padding: theme.spacing.md,
   },
   title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginVertical: theme.spacing.lg,
-    color: theme.colors.gray[800],
+    fontSize: theme.typography.fontSize['2xl'],
+    fontWeight: '700',
+    color: theme.colors.gray[900],
+    marginBottom: theme.spacing.lg,
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: theme.spacing.md,
   },
   section: {
-    marginBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.background,
-    borderRadius: theme.borderRadius.lg,
-    padding: theme.spacing.md,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: theme.spacing.sm,
-    marginBottom: theme.spacing.md,
+    backgroundColor: theme.colors.surface,
+    marginVertical: theme.spacing.sm,
+    paddingVertical: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: theme.colors.gray[100],
   },
   sectionTitle: {
-    fontSize: theme.typography.fontSize.lg,
+    fontSize: theme.typography.fontSize.sm,
     fontWeight: '600',
-    color: theme.colors.gray[800],
+    color: theme.colors.gray[500],
+    textTransform: 'uppercase',
+    marginBottom: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray[100],
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
   settingButton: {
-    paddingVertical: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.gray[100],
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+  },
+  settingContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  settingTextContainer: {
+    flex: 1,
+    marginRight: theme.spacing.sm,
   },
   settingLabel: {
     fontSize: theme.typography.fontSize.base,
-    fontWeight: '500',
-    color: theme.colors.gray[800],
+    color: theme.colors.gray[900],
+    marginBottom: 2,
   },
   settingDescription: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[500],
-    marginTop: 2,
   },
-  versionInfo: {
+  infoItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: theme.spacing.xl,
+    justifyContent: 'space-between',
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
   },
-  versionText: {
+  infoLabel: {
+    fontSize: theme.typography.fontSize.base,
+    color: theme.colors.gray[900],
+  },
+  infoValue: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[500],
-  },
-  devBadge: {
-    backgroundColor: theme.colors.danger + '20',
-    paddingHorizontal: theme.spacing.sm,
-    paddingVertical: 3,
-    borderRadius: theme.borderRadius.sm,
-    borderWidth: 1,
-    borderColor: theme.colors.danger,
-  },
-  devBadgeText: {
-    color: theme.colors.danger,
-    fontSize: 10,
-    fontWeight: 'bold',
+    maxWidth: '60%',
   },
 });

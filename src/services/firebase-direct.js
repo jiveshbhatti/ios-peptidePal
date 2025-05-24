@@ -19,6 +19,7 @@ import {
   orderBy,
   serverTimestamp 
 } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -33,6 +34,7 @@ const firebaseConfig = {
 // Create a unique named app to prevent conflicts
 const firebaseApp = initializeApp(firebaseConfig, 'peptidepal-direct-instance');
 const firestoreDb = getFirestore(firebaseApp);
+const storage = getStorage(firebaseApp);
 
 // Helper to convert Firestore timestamp to ISO string
 const timestampToString = (timestamp) => {
@@ -255,4 +257,4 @@ export const firebaseDirectService = {
 };
 
 // Export the initialized Firebase instances
-export { firebaseApp, firestoreDb };
+export { firebaseApp, firestoreDb, storage };

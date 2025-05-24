@@ -6,7 +6,7 @@
  */
 
 // Import from the firebase-wrapper which forwards to firebase-direct
-import firebaseService, { firestoreDb, firebaseApp } from './firebase-wrapper';
+import firebaseService, { firestoreDb, firebaseApp, storage } from './firebase-wrapper';
 
 // For compatibility with older code
 const db = firestoreDb;
@@ -16,4 +16,4 @@ const app = firebaseApp;
 export default firebaseService;
 
 // Export the Firebase instances for backward compatibility
-export { db, app, firebaseService };
+export { db, app, storage, firebaseService };
