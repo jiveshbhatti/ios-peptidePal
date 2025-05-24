@@ -132,8 +132,8 @@ export const HorizontalWeekCalendar: React.FC<HorizontalWeekCalendarProps> = ({
         key={index}
         style={[
           styles.dayContainer,
+          isToday && !isSelected && styles.todayContainer,
           isSelected && styles.selectedDay,
-          isToday && styles.todayContainer,
         ]}
         onPress={() => {
           AppHaptics.selection();
@@ -142,8 +142,7 @@ export const HorizontalWeekCalendar: React.FC<HorizontalWeekCalendarProps> = ({
       >
         <Text style={[
           styles.dayName,
-          isSelected && styles.selectedDayText,
-          isToday && styles.todayText,
+          (isToday || isSelected) && styles.selectedDayText,
         ]}>
           {format(date, 'EEE')}
         </Text>
@@ -154,8 +153,7 @@ export const HorizontalWeekCalendar: React.FC<HorizontalWeekCalendarProps> = ({
         ]}>
           <Text style={[
             styles.dayNumber,
-            isSelected && styles.selectedDayNumber,
-            isToday && !isSelected && styles.todayNumber,
+            (isToday || isSelected) && styles.selectedDayNumber,
           ]}>
             {format(date, 'd')}
           </Text>
@@ -164,7 +162,7 @@ export const HorizontalWeekCalendar: React.FC<HorizontalWeekCalendarProps> = ({
           <View style={[
             styles.dot,
             { backgroundColor: marked.dotColor || theme.colors.primary },
-            isSelected && styles.selectedDot,
+            (isSelected || isToday) && styles.selectedDot,
           ]} />
         )}
       </TouchableOpacity>
@@ -279,10 +277,8 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   todayContainer: {
-    backgroundColor: theme.colors.primaryLight,
+    backgroundColor: theme.colors.primary,
     borderRadius: theme.borderRadius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.primary,
   },
   dayName: {
     fontSize: theme.typography.fontSize.xs,
@@ -294,8 +290,8 @@ const styles = StyleSheet.create({
     color: 'white',
   },
   todayText: {
-    color: theme.colors.primary,
-    fontWeight: '700',
+    color: 'white',
+    fontWeight: '600',
   },
   dayNumberContainer: {
     width: 32,
@@ -320,8 +316,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   todayNumber: {
-    color: theme.colors.primary,
-    fontWeight: '700',
+    color: 'white',
+    fontWeight: '600',
   },
   dot: {
     width: 4,
