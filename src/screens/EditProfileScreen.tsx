@@ -12,12 +12,11 @@ import { theme } from '@/constants/theme';
 import { useNavigation } from '@react-navigation/native';
 import Button from '@/components/ui/Button';
 import { UserProfile } from '@/types/metrics';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import * as Icon from 'react-native-feather';
-
-const PROFILE_STORAGE_KEY = '@PeptidePal:userProfile';
+import { userProfileService } from '@/services/user-profile.service';
+import { Timestamp } from 'firebase/firestore';
 
 export default function EditProfileScreen() {
   const navigation = useNavigation();
@@ -43,32 +42,29 @@ export default function EditProfileScreen() {
 
   const loadProfile = async () => {
     try {
-      const stored = await AsyncStorage.getItem(PROFILE_STORAGE_KEY);
-      if (stored) {
-        setProfile(JSON.parse(stored));
-      } else {
-        // Create new profile
-        const newProfile: UserProfile = {
-          id: Date.now().toString(),
-          heightUnit: 'cm',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setProfile(newProfile);
+      const profileData = await userProfileService.getUserProfile();
+      if (profileData) {
+        setProfile(profileData);
       }
     } catch (error) {
       console.error('Failed to load profile:', error);
+      Alert.alert('Error', 'Failed to load profile');
     }
   };
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      const updatedProfile = {
-        ...profile,
-        updatedAt: new Date().toISOString(),
-      };
-      await AsyncStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(updatedProfile));
+      await userProfileService.updateUserProfile({
+        name: profile.name,
+        email: profile.email,
+        dateOfBirth: profile.dateOfBirth ? Timestamp.fromDate(new Date(profile.dateOfBirth)) : undefined,
+        height: profile.height,
+        heightUnit: profile.heightUnit,
+        gender: profile.gender,
+        activityLevel: profile.activityLevel,
+        goals: profile.goals,
+      });
       Alert.alert('Success', 'Profile updated successfully');
       navigation.goBack();
     } catch (error) {

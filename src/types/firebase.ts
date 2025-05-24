@@ -83,3 +83,72 @@ export type UpdateInventoryPeptideDocument = Partial<Omit<InventoryPeptideDocume
 export type UpdateInventoryBacWaterDocument = Partial<Omit<InventoryBacWaterDocument, 'id' | 'created_at' | 'updated_at'>>;
 export type UpdateInventorySyringeDocument = Partial<Omit<InventorySyringeDocument, 'id' | 'created_at' | 'updated_at'>>;
 export type UpdateInventoryOtherItemDocument = Partial<Omit<InventoryOtherItemDocument, 'id' | 'created_at' | 'updated_at'>>;
+
+// User Profile and Metrics Types
+export interface UserProfileDocument {
+  id: string;
+  name?: string;
+  email?: string;
+  dateOfBirth?: Timestamp;
+  height?: number;
+  heightUnit: 'cm' | 'ft';
+  gender?: 'male' | 'female' | 'other';
+  activityLevel?: 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+  goals?: string[];
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface WeightEntryDocument {
+  id: string;
+  userId: string;
+  date: Timestamp;
+  weight: number;
+  unit: 'kg' | 'lbs';
+  notes?: string;
+  created_at: Timestamp;
+}
+
+export interface BodyMeasurementDocument {
+  id: string;
+  userId: string;
+  date: Timestamp;
+  chest?: number;
+  waist?: number;
+  hips?: number;
+  bicepLeft?: number;
+  bicepRight?: number;
+  thighLeft?: number;
+  thighRight?: number;
+  calfLeft?: number;
+  calfRight?: number;
+  neck?: number;
+  shoulders?: number;
+  unit: 'cm' | 'in';
+  notes?: string;
+  created_at: Timestamp;
+}
+
+export interface ProgressPhotoDocument {
+  id: string;
+  userId: string;
+  date: Timestamp;
+  imageUrl: string;
+  thumbnailUrl?: string;
+  type: 'front' | 'side' | 'back';
+  weight?: number;
+  notes?: string;
+  created_at: Timestamp;
+}
+
+// Types for creating new user profile documents
+export type NewUserProfileDocument = Omit<UserProfileDocument, 'id' | 'created_at' | 'updated_at'>;
+export type NewWeightEntryDocument = Omit<WeightEntryDocument, 'id' | 'created_at'>;
+export type NewBodyMeasurementDocument = Omit<BodyMeasurementDocument, 'id' | 'created_at'>;
+export type NewProgressPhotoDocument = Omit<ProgressPhotoDocument, 'id' | 'created_at'>;
+
+// Types for updates
+export type UpdateUserProfileDocument = Partial<Omit<UserProfileDocument, 'id' | 'created_at' | 'updated_at'>>;
+export type UpdateWeightEntryDocument = Partial<Omit<WeightEntryDocument, 'id' | 'created_at' | 'userId'>>;
+export type UpdateBodyMeasurementDocument = Partial<Omit<BodyMeasurementDocument, 'id' | 'created_at' | 'userId'>>;
+export type UpdateProgressPhotoDocument = Partial<Omit<ProgressPhotoDocument, 'id' | 'created_at' | 'userId'>>;

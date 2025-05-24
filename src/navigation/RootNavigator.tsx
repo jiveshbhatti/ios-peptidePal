@@ -6,6 +6,7 @@ import ProfileScreen from '@/screens/ProfileScreen';
 import MetricsDetailScreen from '@/screens/MetricsDetailScreen';
 import EditProfileScreen from '@/screens/EditProfileScreen';
 import AddMetricScreen from '@/screens/AddMetricScreen';
+import ProgressPhotosScreen from '@/screens/ProgressPhotosScreen';
 import { theme } from '@/constants/theme';
 
 export type RootStackParamList = {
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   MetricsDetail: { type: 'weight' | 'measurements' | 'photos' };
   EditProfile: undefined;
   AddMetric: { type: 'weight' | 'measurement' };
+  ProgressPhotos: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -78,6 +80,14 @@ export default function RootNavigator() {
           title: 'Add Entry',
           headerBackTitle: 'Cancel',
           presentation: 'modal',
+        }}
+      />
+      <Stack.Screen 
+        name="ProgressPhotos" 
+        component={ProgressPhotosScreen}
+        options={{ 
+          title: 'Progress Photos',
+          headerBackTitle: 'Back',
         }}
       />
     </Stack.Navigator>

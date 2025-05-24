@@ -4,7 +4,7 @@
  * This module forwards all service calls to the proper firebase-direct module.
  * It serves as a compatibility layer to maintain existing import paths.
  */
-import { firebaseDirectService, firestoreDb, firebaseApp } from './firebase-direct';
+import { firebaseDirectService, firestoreDb, firebaseApp, storage } from './firebase-direct';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 
 // Set up global error handler that can be used by other modules
@@ -43,4 +43,4 @@ const firebaseService = new Proxy({}, {
 
 // Export the service and instances
 export default firebaseService;
-export { firebaseService, firestoreDb, firebaseApp };
+export { firebaseService, firestoreDb, firebaseApp, storage };

@@ -17,102 +17,22 @@ import * as Icon from 'react-native-feather';
 import Card from '@/components/ui/Card';
 import { UserProfile, WeightEntry, MetricsStats } from '@/types/metrics';
 import { format } from 'date-fns';
-import { userProfileService } from '@/services/user-profile.service';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type ProfileScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Profile'>;
 
 export default function ProfileScreen() {
   const navigation = useNavigation<ProfileScreenNavigationProp>();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>({
+    id: '1',
+    name: 'Test User',
+    email: 'test@example.com',
+    heightUnit: 'cm',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  });
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [metricsStats, setMetricsStats] = useState<MetricsStats>({});
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  useEffect(() => {
-    calculateStats();
-  }, [weightEntries]);
-
-  const loadData = async () => {
-    try {
-      setLoading(true);
-      
-      // Load profile from Firebase
-      const profileData = await userProfileService.getUserProfile();
-      setProfile(profileData);
-
-      // Load weight entries from Firebase
-      const entries = await userProfileService.getWeightEntries();
-      setWeightEntries(entries);
-      
-      // Check if we need to migrate from AsyncStorage
-      const hasLocalData = await AsyncStorage.getItem('@PeptidePal:userProfile');
-      if (hasLocalData) {
-        Alert.alert(
-          'Migrate Data',
-          'Found local data. Would you like to migrate it to the cloud?',
-          [
-            { text: 'Cancel', style: 'cancel' },
-            {
-              text: 'Migrate',
-              onPress: async () => {
-                try {
-                  await userProfileService.migrateFromAsyncStorage();
-                  await loadData(); // Reload after migration
-                  Alert.alert('Success', 'Data migrated successfully!');
-                } catch (error) {
-                  Alert.alert('Error', 'Failed to migrate data');
-                }
-              },
-            },
-          ]
-        );
-      }
-    } catch (error) {
-      console.error('Failed to load profile data:', error);
-      Alert.alert('Error', 'Failed to load profile data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const calculateStats = () => {
-    if (weightEntries.length === 0) return;
-
-    const sortedEntries = [...weightEntries].sort((a, b) => 
-      new Date(a.date).getTime() - new Date(b.date).getTime()
-    );
-
-    const startingWeight = sortedEntries[0].weight;
-    const currentWeight = sortedEntries[sortedEntries.length - 1].weight;
-    const totalChange = currentWeight - startingWeight;
-
-    // Calculate weekly average
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-    const weekEntries = weightEntries.filter(e => new Date(e.date) >= oneWeekAgo);
-    const weeklyAverage = weekEntries.length > 1 
-      ? (weekEntries[0].weight - weekEntries[weekEntries.length - 1].weight) / weekEntries.length
-      : 0;
-
-    setMetricsStats({
-      startingWeight,
-      currentWeight,
-      totalWeightChange: totalChange,
-      weeklyAverage,
-    });
-  };
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadData();
-    setRefreshing(false);
-  };
 
   const navigateToMetrics = (type: 'weight' | 'measurements' | 'photos') => {
     navigation.navigate('MetricsDetail', { type });
@@ -122,19 +42,11 @@ export default function ProfileScreen() {
     return `${weight.toFixed(1)} ${unit}`;
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.loadingText}>Loading profile...</Text>
-      </View>
-    );
-  }
-
   return (
     <ScrollView 
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        <RefreshControl refreshing={refreshing} onRefresh={() => {}} />
       }
     >
       {/* Profile Header */}
@@ -250,14 +162,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,
-  },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.gray[600],
   },
   header: {
     alignItems: 'center',

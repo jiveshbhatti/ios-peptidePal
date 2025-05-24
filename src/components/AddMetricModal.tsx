@@ -16,9 +16,9 @@ import Button from '@/components/ui/Button';
 import * as Icon from 'react-native-feather';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { WeightEntry, BodyMeasurement } from '@/types/metrics';
 import { AppHaptics } from '@/utils/haptics';
+import { userProfileService } from '@/services/user-profile.service';
 
 interface AddMetricModalProps {
   visible: boolean;
@@ -26,9 +26,6 @@ interface AddMetricModalProps {
   type: 'weight' | 'measurement';
   onSuccess: () => void;
 }
-
-const WEIGHT_STORAGE_KEY = '@PeptidePal:weightEntries';
-const MEASUREMENTS_STORAGE_KEY = '@PeptidePal:bodyMeasurements';
 
 export default function AddMetricModal({ visible, onClose, type, onSuccess }: AddMetricModalProps) {
   const [date, setDate] = useState(new Date());
@@ -43,13 +40,16 @@ export default function AddMetricModal({ visible, onClose, type, onSuccess }: Ad
     chest: '',
     waist: '',
     hips: '',
-    leftArm: '',
-    rightArm: '',
-    leftThigh: '',
-    rightThigh: '',
+    bicepLeft: '',
+    bicepRight: '',
+    thighLeft: '',
+    thighRight: '',
     neck: '',
+    shoulders: '',
+    calfLeft: '',
+    calfRight: '',
   });
-  const [measurementUnit, setMeasurementUnit] = useState<'inches' | 'cm'>('inches');
+  const [measurementUnit, setMeasurementUnit] = useState<'in' | 'cm'>('in');
   
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -72,38 +72,26 @@ export default function AddMetricModal({ visible, onClose, type, onSuccess }: Ad
 
     try {
       if (type === 'weight') {
-        const entry: WeightEntry = {
-          id: Date.now().toString(),
+        await userProfileService.addWeightEntry({
           date: date.toISOString(),
           weight: parseFloat(weight),
           unit: weightUnit,
-          notes: notes.trim(),
-          createdAt: new Date().toISOString(),
-        };
-
-        const existing = await AsyncStorage.getItem(WEIGHT_STORAGE_KEY);
-        const entries = existing ? JSON.parse(existing) : [];
-        entries.push(entry);
-        await AsyncStorage.setItem(WEIGHT_STORAGE_KEY, JSON.stringify(entries));
+          notes: notes.trim() || undefined,
+        });
       } else {
-        const entry: BodyMeasurement = {
-          id: Date.now().toString(),
+        const measurementData: any = {};
+        Object.entries(measurements).forEach(([key, value]) => {
+          if (value) {
+            measurementData[key] = parseFloat(value);
+          }
+        });
+        
+        await userProfileService.addBodyMeasurement({
           date: date.toISOString(),
-          measurements: Object.entries(measurements).reduce((acc, [key, value]) => {
-            if (value) {
-              acc[key as keyof typeof measurements] = parseFloat(value);
-            }
-            return acc;
-          }, {} as BodyMeasurement['measurements']),
+          ...measurementData,
           unit: measurementUnit,
-          notes: notes.trim(),
-          createdAt: new Date().toISOString(),
-        };
-
-        const existing = await AsyncStorage.getItem(MEASUREMENTS_STORAGE_KEY);
-        const entries = existing ? JSON.parse(existing) : [];
-        entries.push(entry);
-        await AsyncStorage.setItem(MEASUREMENTS_STORAGE_KEY, JSON.stringify(entries));
+          notes: notes.trim() || undefined,
+        });
       }
 
       AppHaptics.success();
@@ -124,11 +112,14 @@ export default function AddMetricModal({ visible, onClose, type, onSuccess }: Ad
       chest: '',
       waist: '',
       hips: '',
-      leftArm: '',
-      rightArm: '',
-      leftThigh: '',
-      rightThigh: '',
+      bicepLeft: '',
+      bicepRight: '',
+      thighLeft: '',
+      thighRight: '',
       neck: '',
+      shoulders: '',
+      calfLeft: '',
+      calfRight: '',
     });
     setNotes('');
   };
@@ -172,10 +163,10 @@ export default function AddMetricModal({ visible, onClose, type, onSuccess }: Ad
         <Text style={styles.label}>Unit</Text>
         <View style={styles.unitToggle}>
           <TouchableOpacity
-            style={[styles.unitButton, measurementUnit === 'inches' && styles.unitButtonActive]}
-            onPress={() => setMeasurementUnit('inches')}
+            style={[styles.unitButton, measurementUnit === 'in' && styles.unitButtonActive]}
+            onPress={() => setMeasurementUnit('in')}
           >
-            <Text style={[styles.unitText, measurementUnit === 'inches' && styles.unitTextActive]}>in</Text>
+            <Text style={[styles.unitText, measurementUnit === 'in' && styles.unitTextActive]}>in</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.unitButton, measurementUnit === 'cm' && styles.unitButtonActive]}

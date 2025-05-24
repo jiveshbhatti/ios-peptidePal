@@ -28,7 +28,6 @@ export default function ProfileScreen() {
   const [weightEntries, setWeightEntries] = useState<WeightEntry[]>([]);
   const [metricsStats, setMetricsStats] = useState<MetricsStats>({});
   const [refreshing, setRefreshing] = useState(false);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -40,8 +39,6 @@ export default function ProfileScreen() {
 
   const loadData = async () => {
     try {
-      setLoading(true);
-      
       // Load profile from Firebase
       const profileData = await userProfileService.getUserProfile();
       setProfile(profileData);
@@ -76,8 +73,6 @@ export default function ProfileScreen() {
     } catch (error) {
       console.error('Failed to load profile data:', error);
       Alert.alert('Error', 'Failed to load profile data');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -122,19 +117,27 @@ export default function ProfileScreen() {
     return `${weight.toFixed(1)} ${unit}`;
   };
 
-  if (loading) {
-    return (
-      <View style={[styles.container, styles.centerContent]}>
-        <Text style={styles.loadingText}>Loading profile...</Text>
-      </View>
-    );
-  }
+  const getChangeColor = (change: number) => {
+    if (change === 0) return theme.colors.gray[600];
+    return change > 0 ? theme.colors.error : theme.colors.success;
+  };
+
+  const getChangeIcon = (change: number) => {
+    if (change === 0) return null;
+    return change > 0 ? 
+      <Icon.TrendingUp color={theme.colors.error} width={16} height={16} /> :
+      <Icon.TrendingDown color={theme.colors.success} width={16} height={16} />;
+  };
 
   return (
-    <ScrollView 
+    <ScrollView
       style={styles.container}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={theme.colors.primary}
+        />
       }
     >
       {/* Profile Header */}
@@ -143,61 +146,59 @@ export default function ProfileScreen() {
           <View style={styles.profileImagePlaceholder}>
             <Icon.User color={theme.colors.gray[400]} width={40} height={40} />
           </View>
+          <TouchableOpacity style={styles.editImageButton}>
+            <Icon.Camera color={theme.colors.primary} width={16} height={16} />
+          </TouchableOpacity>
         </View>
         
-        <Text style={styles.profileName}>{profile?.name || 'Add your name'}</Text>
-        <Text style={styles.profileEmail}>{profile?.email || 'Add your email'}</Text>
-        
+        <Text style={styles.userName}>{profile?.name || 'Add Your Name'}</Text>
         <TouchableOpacity 
-          style={styles.editButton}
+          style={styles.editProfileButton}
           onPress={() => navigation.navigate('EditProfile')}
         >
-          <Icon.Edit2 color="white" width={16} height={16} />
-          <Text style={styles.editButtonText}>Edit Profile</Text>
+          <Icon.Edit3 color={theme.colors.primary} width={16} height={16} />
+          <Text style={styles.editProfileText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
 
       {/* Quick Stats */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Quick Stats</Text>
+      <View style={styles.statsContainer}>
+        <Card style={styles.statCard} variant="elevated">
+          <Text style={styles.statValue}>
+            {metricsStats.currentWeight ? formatWeight(metricsStats.currentWeight) : '--'}
+          </Text>
+          <Text style={styles.statLabel}>Current</Text>
+        </Card>
         
-        <View style={styles.statsGrid}>
-          <Card style={styles.statCard}>
-            <Icon.TrendingDown color={theme.colors.primary} width={24} height={24} />
-            <Text style={styles.statValue}>
-              {metricsStats.currentWeight ? formatWeight(metricsStats.currentWeight) : '--'}
-            </Text>
-            <Text style={styles.statLabel}>Current</Text>
-          </Card>
-          
-          <Card style={styles.statCard}>
-            <Icon.Target color={theme.colors.success} width={24} height={24} />
-            <Text style={styles.statValue}>
+        <Card style={styles.statCard} variant="elevated">
+          <View style={styles.changeContainer}>
+            {getChangeIcon(metricsStats.totalWeightChange || 0)}
+            <Text style={[
+              styles.statValue, 
+              { color: getChangeColor(metricsStats.totalWeightChange || 0) }
+            ]}>
               {metricsStats.totalWeightChange 
-                ? `${metricsStats.totalWeightChange > 0 ? '+' : ''}${formatWeight(Math.abs(metricsStats.totalWeightChange))}`
+                ? `${metricsStats.totalWeightChange > 0 ? '+' : ''}${metricsStats.totalWeightChange.toFixed(1)}`
                 : '--'}
             </Text>
-            <Text style={styles.statLabel}>Total Change</Text>
-          </Card>
-          
-          <Card style={styles.statCard}>
-            <Icon.Activity color={theme.colors.warning} width={24} height={24} />
-            <Text style={styles.statValue}>
-              {metricsStats.weeklyAverage 
-                ? `${formatWeight(Math.abs(metricsStats.weeklyAverage))}/wk`
-                : '--'}
-            </Text>
-            <Text style={styles.statLabel}>Weekly Avg</Text>
-          </Card>
-        </View>
+          </View>
+          <Text style={styles.statLabel}>Total Change</Text>
+        </Card>
+        
+        <Card style={styles.statCard} variant="elevated">
+          <Text style={styles.statValue}>
+            {profile?.goals?.length || 0}
+          </Text>
+          <Text style={styles.statLabel}>Goals</Text>
+        </Card>
       </View>
 
-      {/* Metrics Navigation */}
-      <View style={styles.section}>
+      {/* Metrics Sections */}
+      <View style={styles.metricsSection}>
         <Text style={styles.sectionTitle}>Track Your Progress</Text>
         
         <TouchableOpacity 
-          style={styles.metricItem}
+          style={styles.metricCard}
           onPress={() => navigateToMetrics('weight')}
         >
           <View style={styles.metricIconContainer}>
@@ -205,17 +206,17 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.metricContent}>
             <Text style={styles.metricTitle}>Weight Tracking</Text>
-            <Text style={styles.metricDescription}>
+            <Text style={styles.metricSubtitle}>
               {weightEntries.length > 0 
-                ? `${weightEntries.length} entries • Last: ${format(new Date(weightEntries[0].date), 'MMM d')}`
-                : 'Start tracking your weight'}
+                ? `Last entry: ${format(new Date(weightEntries[0].date), 'MMM d')}`
+                : 'No entries yet'}
             </Text>
           </View>
           <Icon.ChevronRight color={theme.colors.gray[400]} width={20} height={20} />
         </TouchableOpacity>
-        
+
         <TouchableOpacity 
-          style={styles.metricItem}
+          style={styles.metricCard}
           onPress={() => navigateToMetrics('measurements')}
         >
           <View style={styles.metricIconContainer}>
@@ -223,23 +224,42 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.metricContent}>
             <Text style={styles.metricTitle}>Body Measurements</Text>
-            <Text style={styles.metricDescription}>Track chest, waist, arms, and more</Text>
+            <Text style={styles.metricSubtitle}>Track circumference changes</Text>
           </View>
           <Icon.ChevronRight color={theme.colors.gray[400]} width={20} height={20} />
         </TouchableOpacity>
-        
+
         <TouchableOpacity 
-          style={styles.metricItem}
+          style={styles.metricCard}
           onPress={() => navigateToMetrics('photos')}
         >
           <View style={styles.metricIconContainer}>
-            <Icon.Camera color={theme.colors.accent} width={24} height={24} />
+            <Icon.Camera color={theme.colors.warning} width={24} height={24} />
           </View>
           <View style={styles.metricContent}>
             <Text style={styles.metricTitle}>Progress Photos</Text>
-            <Text style={styles.metricDescription}>Visualize your transformation</Text>
+            <Text style={styles.metricSubtitle}>Visual transformation tracking</Text>
           </View>
           <Icon.ChevronRight color={theme.colors.gray[400]} width={20} height={20} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Quick Actions */}
+      <View style={styles.quickActions}>
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => navigation.navigate('AddMetric', { type: 'weight' })}
+        >
+          <Icon.Plus color={theme.colors.primary} width={20} height={20} />
+          <Text style={styles.quickActionText}>Log Weight</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={styles.quickActionButton}
+          onPress={() => navigation.navigate('AddMetric', { type: 'measurement' })}
+        >
+          <Icon.Ruler color={theme.colors.secondary} width={20} height={20} />
+          <Text style={styles.quickActionText}>Add Measurements</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -251,57 +271,84 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: theme.colors.background,
   },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: theme.typography.fontSize.base,
-    color: theme.colors.gray[600],
-  },
   header: {
     alignItems: 'center',
     paddingVertical: theme.spacing.xl,
+    backgroundColor: theme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: theme.colors.gray[200],
   },
   profileImageContainer: {
+    position: 'relative',
     marginBottom: theme.spacing.md,
   },
   profileImagePlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
     backgroundColor: theme.colors.gray[100],
     alignItems: 'center',
     justifyContent: 'center',
   },
-  profileName: {
+  editImageButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: theme.colors.background,
+    borderRadius: 15,
+    width: 30,
+    height: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: theme.colors.gray[200],
+  },
+  userName: {
     fontSize: theme.typography.fontSize.xl,
     fontWeight: '600',
     color: theme.colors.gray[800],
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
-  profileEmail: {
-    fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
-    marginBottom: theme.spacing.md,
-  },
-  editButton: {
+  editProfileButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    gap: theme.spacing.xs,
     paddingHorizontal: theme.spacing.md,
     paddingVertical: theme.spacing.sm,
-    borderRadius: theme.borderRadius.md,
-    gap: theme.spacing.xs,
+    backgroundColor: theme.colors.primaryLight,
+    borderRadius: theme.borderRadius.full,
   },
-  editButtonText: {
-    color: 'white',
+  editProfileText: {
     fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.primary,
     fontWeight: '500',
   },
-  section: {
+  statsContainer: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  statCard: {
+    flex: 1,
+    padding: theme.spacing.md,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontSize: theme.typography.fontSize.xl,
+    fontWeight: '600',
+    color: theme.colors.gray[800],
+  },
+  statLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[500],
+    marginTop: theme.spacing.xs,
+  },
+  changeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.xs,
+  },
+  metricsSection: {
     padding: theme.spacing.md,
   },
   sectionTitle: {
@@ -310,26 +357,7 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[800],
     marginBottom: theme.spacing.md,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: theme.spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    padding: theme.spacing.md,
-    alignItems: 'center',
-    gap: theme.spacing.xs,
-  },
-  statValue: {
-    fontSize: theme.typography.fontSize.lg,
-    fontWeight: '600',
-    color: theme.colors.gray[800],
-  },
-  statLabel: {
-    fontSize: theme.typography.fontSize.xs,
-    color: theme.colors.gray[600],
-  },
-  metricItem: {
+  metricCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.surface,
@@ -342,7 +370,7 @@ const styles = StyleSheet.create({
   metricIconContainer: {
     width: 48,
     height: 48,
-    borderRadius: theme.borderRadius.md,
+    borderRadius: 24,
     backgroundColor: theme.colors.gray[50],
     alignItems: 'center',
     justifyContent: 'center',
@@ -355,10 +383,32 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.base,
     fontWeight: '600',
     color: theme.colors.gray[800],
-    marginBottom: 2,
   },
-  metricDescription: {
+  metricSubtitle: {
     fontSize: theme.typography.fontSize.sm,
-    color: theme.colors.gray[600],
+    color: theme.colors.gray[500],
+    marginTop: 2,
+  },
+  quickActions: {
+    flexDirection: 'row',
+    padding: theme.spacing.md,
+    gap: theme.spacing.sm,
+  },
+  quickActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.surface,
+    borderRadius: theme.borderRadius.md,
+    paddingVertical: theme.spacing.md,
+    borderWidth: 1,
+    borderColor: theme.colors.gray[200],
+  },
+  quickActionText: {
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '500',
+    color: theme.colors.gray[700],
   },
 });

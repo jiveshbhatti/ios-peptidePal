@@ -16,8 +16,8 @@ import * as Icon from 'react-native-feather';
 import { LineChart } from 'react-native-chart-kit';
 import { WeightEntry, BodyMeasurement } from '@/types/metrics';
 import { format } from 'date-fns';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import FloatingActionButton from '@/components/ui/FloatingActionButton';
+import { userProfileService } from '@/services/user-profile.service';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -29,9 +29,6 @@ type MetricsDetailScreenRouteProp = {
 
 type MetricsDetailScreenNavigationProp = StackNavigationProp<RootStackParamList, 'MetricsDetail'>;
 
-const WEIGHT_STORAGE_KEY = '@PeptidePal:weightEntries';
-const MEASUREMENTS_STORAGE_KEY = '@PeptidePal:bodyMeasurements';
-
 export default function MetricsDetailScreen() {
   const route = useRoute<MetricsDetailScreenRouteProp>();
   const navigation = useNavigation<MetricsDetailScreenNavigationProp>();
@@ -42,31 +39,33 @@ export default function MetricsDetailScreen() {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'year'>('month');
 
   useEffect(() => {
+    if (type === 'photos') {
+      // Redirect to dedicated Progress Photos screen
+      navigation.replace('ProgressPhotos');
+      return;
+    }
+    
     navigation.setOptions({
-      title: type === 'weight' ? 'Weight Tracking' : 
-             type === 'measurements' ? 'Body Measurements' : 'Progress Photos',
+      title: type === 'weight' ? 'Weight Tracking' : 'Body Measurements',
     });
     loadData();
-  }, [type]);
+  }, [type, navigation]);
 
   const loadData = async () => {
     try {
       if (type === 'weight') {
-        const data = await AsyncStorage.getItem(WEIGHT_STORAGE_KEY);
-        if (data) {
-          const entries = JSON.parse(data);
-          setWeightEntries(entries.sort((a: WeightEntry, b: WeightEntry) => 
-            new Date(a.date).getTime() - new Date(b.date).getTime()
-          ));
-        }
+        const entries = await userProfileService.getWeightEntries();
+        // Sort by date ascending for chart display
+        setWeightEntries(entries.sort((a, b) => 
+          new Date(a.date).getTime() - new Date(b.date).getTime()
+        ));
       } else if (type === 'measurements') {
-        const data = await AsyncStorage.getItem(MEASUREMENTS_STORAGE_KEY);
-        if (data) {
-          setMeasurements(JSON.parse(data));
-        }
+        const entries = await userProfileService.getBodyMeasurements();
+        setMeasurements(entries);
       }
     } catch (error) {
       console.error('Failed to load metrics data:', error);
+      Alert.alert('Error', 'Failed to load data');
     }
   };
 
@@ -82,9 +81,11 @@ export default function MetricsDetailScreen() {
           onPress: async () => {
             try {
               if (type === 'weight') {
-                const filtered = weightEntries.filter(e => e.id !== id);
-                setWeightEntries(filtered);
-                await AsyncStorage.setItem(WEIGHT_STORAGE_KEY, JSON.stringify(filtered));
+                await userProfileService.deleteWeightEntry(id);
+                await loadData(); // Reload data after deletion
+              } else if (type === 'measurements') {
+                await userProfileService.deleteBodyMeasurement(id);
+                await loadData(); // Reload data after deletion
               }
             } catch (error) {
               Alert.alert('Error', 'Failed to delete entry');
@@ -313,21 +314,15 @@ export default function MetricsDetailScreen() {
           </View>
         )}
 
-        {type === 'photos' && (
-          <View style={styles.emptyState}>
-            <Icon.Camera color={theme.colors.gray[400]} width={48} height={48} />
-            <Text style={styles.emptyStateText}>Progress photos coming soon</Text>
-            <Text style={styles.emptyStateSubtext}>
-              This feature is under development
-            </Text>
-          </View>
-        )}
+        {type === 'photos' && null}
       </ScrollView>
 
-      <FloatingActionButton
-        onPress={() => navigation.navigate('AddMetric', { type })}
-        icon={<Icon.Plus color="white" width={24} height={24} />}
-      />
+      {type !== 'photos' && (
+        <FloatingActionButton
+          onPress={() => navigation.navigate('AddMetric', { type })}
+          icon={<Icon.Plus color="white" width={24} height={24} />}
+        />
+      )}
     </View>
   );
 }
