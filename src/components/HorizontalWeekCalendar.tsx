@@ -279,8 +279,10 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.md,
   },
   todayContainer: {
-    backgroundColor: theme.colors.gray[100],
+    backgroundColor: theme.colors.primaryLight,
     borderRadius: theme.borderRadius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.primary,
   },
   dayName: {
     fontSize: theme.typography.fontSize.xs,
@@ -293,7 +295,7 @@ const styles = StyleSheet.create({
   },
   todayText: {
     color: theme.colors.primary,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   dayNumberContainer: {
     width: 32,
@@ -306,7 +308,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   todayNumberContainer: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: 'transparent',
   },
   dayNumber: {
     fontSize: theme.typography.fontSize.base,
@@ -318,8 +320,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   todayNumber: {
-    color: 'white',
-    fontWeight: '600',
+    color: theme.colors.primary,
+    fontWeight: '700',
   },
   dot: {
     width: 4,
