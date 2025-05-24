@@ -1,19 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Linking } from 'react-native';
-import { theme } from '@/constants/theme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { config } from '../config';
 import NotificationService from '@/services/NotificationService';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import * as Icon from 'react-native-feather';
+import { Theme } from '@/constants/theme';
 
 type SettingsNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
 export default function SettingsScreen() {
   const navigation = useNavigation<SettingsNavigationProp>();
+  const { theme, themeMode, setThemeMode } = useTheme();
+  const styles = createStyles(theme);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
   const [notificationSettings, setNotificationSettings] = useState({
     doseReminders: true,
     expiryAlerts: true,
@@ -75,12 +77,17 @@ export default function SettingsScreen() {
     }
   };
   
-  // Handle toggling dark mode (placeholder for now)
-  const toggleDarkMode = () => {
+  // Handle theme mode selection
+  const handleThemeChange = () => {
     Alert.alert(
-      'Dark Mode',
-      'Dark mode is not yet implemented',
-      [{ text: 'OK' }]
+      'Choose Theme',
+      'Select your preferred theme mode',
+      [
+        { text: 'Light', onPress: () => setThemeMode('light') },
+        { text: 'Dark', onPress: () => setThemeMode('dark') },
+        { text: 'System', onPress: () => setThemeMode('system') },
+        { text: 'Cancel', style: 'cancel' }
+      ]
     );
   };
   
@@ -170,18 +177,17 @@ export default function SettingsScreen() {
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Display</Text>
         
-        <View style={styles.settingItem}>
-          <View>
-            <Text style={styles.settingLabel}>Dark Mode</Text>
-            <Text style={styles.settingDescription}>Switch to dark theme</Text>
+        <TouchableOpacity style={styles.settingButton} onPress={handleThemeChange}>
+          <View style={styles.settingContent}>
+            <View style={styles.settingTextContainer}>
+              <Text style={styles.settingLabel}>Theme</Text>
+              <Text style={styles.settingDescription}>
+                {themeMode === 'system' ? 'System' : themeMode === 'dark' ? 'Dark' : 'Light'}
+              </Text>
+            </View>
+            <Icon.ChevronRight color={theme.colors.gray[400]} width={20} height={20} />
           </View>
-          <Switch 
-            value={darkMode}
-            onValueChange={toggleDarkMode}
-            trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
-            thumbColor={darkMode ? theme.colors.primary : theme.colors.gray[100]}
-          />
-        </View>
+        </TouchableOpacity>
       </View>
       
       <View style={styles.section}>
@@ -308,7 +314,7 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const createStyles = (theme: Theme) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.colors.background,

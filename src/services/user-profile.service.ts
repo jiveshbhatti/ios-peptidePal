@@ -241,7 +241,8 @@ class UserProfileService {
 
   async uploadProgressPhoto(
     imageUri: string,
-    photoData: Omit<ProgressPhotoDocument, 'id' | 'imageUrl' | 'thumbnailUrl' | 'createdAt' | 'userId'>
+    photoData: Omit<ProgressPhotoDocument, 'id' | 'imageUrl' | 'thumbnailUrl' | 'createdAt' | 'userId'>,
+    thumbnailUri?: string
   ): Promise<string> {
     try {
       // Convert image URI to blob
@@ -249,15 +250,24 @@ class UserProfileService {
       const blob = await response.blob();
       
       // Create unique filename
-      const filename = `progress-photos/${USER_ID}/${Date.now()}_${photoData.type}.jpg`;
+      const timestamp = Date.now();
+      const filename = `progress-photos/${USER_ID}/${timestamp}_${photoData.type}.jpg`;
       const storageRef = ref(storage, filename);
       
-      // Upload image
+      // Upload main image
       const snapshot = await uploadBytes(storageRef, blob);
       const imageUrl = await getDownloadURL(snapshot.ref);
       
-      // Create thumbnail filename (we'll use the same image for now)
-      const thumbnailUrl = imageUrl; // In production, you'd generate a smaller thumbnail
+      // Upload thumbnail if provided
+      let thumbnailUrl = imageUrl;
+      if (thumbnailUri) {
+        const thumbResponse = await fetch(thumbnailUri);
+        const thumbBlob = await thumbResponse.blob();
+        const thumbFilename = `progress-photos/${USER_ID}/${timestamp}_${photoData.type}_thumb.jpg`;
+        const thumbRef = ref(storage, thumbFilename);
+        const thumbSnapshot = await uploadBytes(thumbRef, thumbBlob);
+        thumbnailUrl = await getDownloadURL(thumbSnapshot.ref);
+      }
       
       // Save photo metadata to Firestore
       const newPhoto: NewProgressPhotoDocument = {
@@ -282,11 +292,21 @@ class UserProfileService {
     }
   }
 
-  async deleteProgressPhoto(photoId: string, imageUrl: string): Promise<void> {
+  async deleteProgressPhoto(photoId: string, imageUrl: string, thumbnailUrl?: string): Promise<void> {
     try {
-      // Delete from storage
+      // Delete main image from storage
       const storageRef = ref(storage, imageUrl);
       await deleteObject(storageRef);
+      
+      // Delete thumbnail if different from main image
+      if (thumbnailUrl && thumbnailUrl !== imageUrl) {
+        try {
+          const thumbRef = ref(storage, thumbnailUrl);
+          await deleteObject(thumbRef);
+        } catch (error) {
+          console.warn('Failed to delete thumbnail:', error);
+        }
+      }
       
       // Delete from Firestore
       await deleteDoc(doc(db, PHOTOS_COLLECTION, photoId));
