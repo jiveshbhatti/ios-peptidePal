@@ -1,15 +1,59 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Linking } from 'react-native';
 import { theme } from '@/constants/theme';
 import { config } from '../config';
+import NotificationService from '@/services/NotificationService';
+import * as Icon from 'react-native-feather';
 
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [darkMode, setDarkMode] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState({
+    doseReminders: true,
+    expiryAlerts: true,
+    soundEnabled: true,
+  });
+
+  // Load notification settings on mount
+  useEffect(() => {
+    const settings = NotificationService.getSettings();
+    setNotificationsEnabled(settings.enabled);
+    setNotificationSettings({
+      doseReminders: settings.doseReminders,
+      expiryAlerts: settings.expiryAlerts,
+      soundEnabled: settings.soundEnabled,
+    });
+  }, []);
   
   // Handle toggling notifications
-  const toggleNotifications = () => {
-    setNotificationsEnabled(!notificationsEnabled);
+  const toggleNotifications = async () => {
+    const newValue = !notificationsEnabled;
+    setNotificationsEnabled(newValue);
+    await NotificationService.setNotificationsEnabled(newValue);
+    
+    if (newValue) {
+      // Request permissions when enabling
+      const hasPermission = await NotificationService.requestPermissions();
+      if (!hasPermission) {
+        Alert.alert(
+          'Permissions Required',
+          'Please enable notifications in your device settings to receive dose reminders.',
+          [
+            { text: 'Cancel', onPress: () => setNotificationsEnabled(false) },
+            { text: 'Open Settings', onPress: () => {
+              Linking.openSettings();
+            }}
+          ]
+        );
+      }
+    }
+  };
+  
+  // Handle individual notification settings
+  const updateNotificationSetting = async (key: string, value: boolean) => {
+    const newSettings = { ...notificationSettings, [key]: value };
+    setNotificationSettings(newSettings);
+    await NotificationService.updateSettings({ [key]: value });
   };
   
   // Handle toggling dark mode (placeholder for now)
@@ -26,14 +70,17 @@ export default function SettingsScreen() {
     <ScrollView style={styles.container}>
       <Text style={styles.title}>Settings</Text>
       
-      {/* Settings Sections */}
+      {/* Notification Settings Section */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>App Settings</Text>
+        <View style={styles.sectionHeader}>
+          <Icon.Bell color={theme.colors.primary} width={20} height={20} />
+          <Text style={styles.sectionTitle}>Notifications</Text>
+        </View>
         
         <View style={styles.settingItem}>
-          <View>
-            <Text style={styles.settingLabel}>Notifications</Text>
-            <Text style={styles.settingDescription}>Enable dose reminders and alerts</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.settingLabel}>Enable All Notifications</Text>
+            <Text style={styles.settingDescription}>Master switch for all notifications</Text>
           </View>
           <Switch 
             value={notificationsEnabled}
@@ -42,6 +89,54 @@ export default function SettingsScreen() {
             thumbColor={notificationsEnabled ? theme.colors.primary : theme.colors.gray[100]}
           />
         </View>
+        
+        {notificationsEnabled && (
+          <>
+            <View style={styles.settingItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Dose Reminders</Text>
+                <Text style={styles.settingDescription}>Get reminded 15 min before doses</Text>
+              </View>
+              <Switch 
+                value={notificationSettings.doseReminders}
+                onValueChange={(value) => updateNotificationSetting('doseReminders', value)}
+                trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
+                thumbColor={notificationSettings.doseReminders ? theme.colors.primary : theme.colors.gray[100]}
+              />
+            </View>
+            
+            <View style={styles.settingItem}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Expiry Alerts</Text>
+                <Text style={styles.settingDescription}>Warnings for expiring vials</Text>
+              </View>
+              <Switch 
+                value={notificationSettings.expiryAlerts}
+                onValueChange={(value) => updateNotificationSetting('expiryAlerts', value)}
+                trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
+                thumbColor={notificationSettings.expiryAlerts ? theme.colors.primary : theme.colors.gray[100]}
+              />
+            </View>
+            
+            <View style={[styles.settingItem, { borderBottomWidth: 0 }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.settingLabel}>Notification Sound</Text>
+                <Text style={styles.settingDescription}>Play sound with notifications</Text>
+              </View>
+              <Switch 
+                value={notificationSettings.soundEnabled}
+                onValueChange={(value) => updateNotificationSetting('soundEnabled', value)}
+                trackColor={{ false: theme.colors.gray[300], true: theme.colors.primary + '40' }}
+                thumbColor={notificationSettings.soundEnabled ? theme.colors.primary : theme.colors.gray[100]}
+              />
+            </View>
+          </>
+        )}
+      </View>
+
+      {/* App Settings Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>App Settings</Text>
         
         <View style={styles.settingItem}>
           <View>
@@ -186,7 +281,7 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: theme.spacing.xl,
-    backgroundColor: theme.colors.white,
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.lg,
     padding: theme.spacing.md,
     shadowColor: '#000',
@@ -195,11 +290,16 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 2,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+  },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: '600',
     color: theme.colors.gray[800],
-    marginBottom: theme.spacing.md,
   },
   settingItem: {
     flexDirection: 'row',

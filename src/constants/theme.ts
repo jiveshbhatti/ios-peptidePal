@@ -6,6 +6,8 @@ export const theme = {
     secondaryLight: '#E6F7EF',
     warning: '#F59E0B',
     error: '#EF4444',
+    danger: '#DC2626',
+    white: '#FFFFFF',
     gray: {
       50: '#FAFAFA',
       100: '#F3F4F6',

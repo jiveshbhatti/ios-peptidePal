@@ -3,6 +3,7 @@ import { Peptide } from '@/types/peptide';
 import { InventoryPeptide, InventoryBacWater, InventorySyringe, InventoryOtherItem } from '@/types/inventory';
 import firebaseRealtimeService from '@/services/firebase-realtime';
 import { inventoryService } from '@/services/inventory.service';
+import NotificationService from '@/services/NotificationService';
 
 interface DataContextType {
   peptides: Peptide[];
@@ -61,6 +62,30 @@ export function DataProvider({ children }: { children: ReactNode }) {
     // Subscribe to peptides
     const unsubscribePeptides = firebaseRealtimeService.subscribeToPeptides((updatedPeptides) => {
       console.log('Peptides updated via real-time subscription:', updatedPeptides.length);
+      
+      // Check for newly activated peptides and schedule notifications
+      updatedPeptides.forEach(peptide => {
+        const hasActiveVial = peptide.vials?.some(v => v.isActive);
+        const previousPeptide = peptides.find(p => p.id === peptide.id);
+        const hadActiveVial = previousPeptide?.vials?.some(v => v.isActive);
+        
+        // If a vial was just activated, schedule notifications
+        if (hasActiveVial && !hadActiveVial) {
+          console.log(`New vial activated for ${peptide.name}, scheduling notifications`);
+          NotificationService.scheduleDoseReminders(peptide);
+          
+          // Also schedule expiry alert if vial has expiration date
+          const activeVial = peptide.vials?.find(v => v.isActive);
+          if (activeVial?.expirationDate) {
+            NotificationService.scheduleExpiryAlert(
+              peptide.id,
+              peptide.name,
+              new Date(activeVial.expirationDate)
+            );
+          }
+        }
+      });
+      
       setPeptides(updatedPeptides);
       setLoading(false);
     });
