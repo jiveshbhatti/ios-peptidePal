@@ -13,6 +13,7 @@
     "prod": "npm run set-prod"
   },
   "dependencies": {
+    "@config-plugins/react-native-siri-shortcut": "^8.0.0",
     "@expo/metro-runtime": "~5.0.4",
     "@react-native-async-storage/async-storage": "2.1.2",
     "@react-native-community/datetimepicker": "^8.2.0",
@@ -45,6 +46,7 @@
     "react-native-reanimated": "^3.17.5",
     "react-native-safe-area-context": "^5.4.0",
     "react-native-screens": "^4.10.0",
+    "react-native-siri-shortcut": "^3.2.4",
     "react-native-svg": "15.11.2",
     "react-native-swipe-list-view": "^3.2.9",
     "react-native-web": "^0.20.0"

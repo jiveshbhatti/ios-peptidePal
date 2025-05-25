@@ -4,6 +4,7 @@ import { InventoryPeptide, InventoryBacWater, InventorySyringe, InventoryOtherIt
 import firebaseRealtimeService from '@/services/firebase-realtime';
 import { inventoryService } from '@/services/inventory.service';
 import NotificationService from '@/services/NotificationService';
+import SiriShortcutsManager from '@/services/SiriShortcutsManager';
 
 interface DataContextType {
   peptides: Peptide[];
@@ -87,6 +88,8 @@ export function DataProvider({ children }: { children: ReactNode }) {
       });
       
       setPeptides(updatedPeptides);
+      // Update Siri shortcuts with latest peptides data
+      SiriShortcutsManager.updatePeptides(updatedPeptides);
       setLoading(false);
     });
     unsubscribeFunctions.push(unsubscribePeptides);

@@ -23,6 +23,7 @@ import * as dateUtils from '@/utils/date';
 import DoseLogModal from '@/components/DoseLogModal';
 import BottomSheet from '@/components/ui/BottomSheet';
 import SuccessAnimation from '@/components/ui/SuccessAnimation';
+import SiriShortcutsManager from '@/services/SiriShortcutsManager';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -391,6 +392,10 @@ export default function HomeScreen() {
               setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
               setShowSuccessAnimation(true);
             }, 100);
+            
+            // Donate Siri shortcut based on time of day
+            const shortcutType = doseData.timeOfDay === 'AM' ? 'LogMorningDose' : 'LogEveningDose';
+            SiriShortcutsManager.donateShortcut(shortcutType);
             
             // Check if vial was depleted (add null check for vials)
             if (updatedPeptide && updatedPeptide.vials) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, Alert, Linking, Platform } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { config } from '../config';
 import NotificationService from '@/services/NotificationService';
@@ -8,6 +8,7 @@ import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import * as Icon from 'react-native-feather';
 import { Theme } from '@/constants/theme';
+import SiriShortcutsManager from '@/services/SiriShortcutsManager';
 
 type SettingsNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
@@ -289,6 +290,73 @@ export default function SettingsScreen() {
           </View>
         </TouchableOpacity>
       </View>
+      
+      {Platform.OS === 'ios' && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Siri Shortcuts</Text>
+          <Text style={styles.settingDescription}>Add voice commands to control PeptidePal with Siri</Text>
+          
+          <TouchableOpacity
+            style={styles.settingButton}
+            onPress={async () => {
+              try {
+                await SiriShortcutsManager.presentShortcut('LogMorningDose');
+              } catch (error) {
+                console.error('Error presenting shortcut:', error);
+              }
+            }}
+          >
+            <View style={styles.settingContent}>
+              <Icon.Sunrise color={theme.colors.primary} width={20} height={20} />
+              <View style={[styles.settingTextContainer, { marginLeft: 12 }]}>
+                <Text style={styles.settingLabel}>Log Morning Dose</Text>
+                <Text style={styles.settingDescription}>"Hey Siri, log morning dose"</Text>
+              </View>
+              <Icon.Plus color={theme.colors.primary} width={20} height={20} />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.settingButton}
+            onPress={async () => {
+              try {
+                await SiriShortcutsManager.presentShortcut('LogEveningDose');
+              } catch (error) {
+                console.error('Error presenting shortcut:', error);
+              }
+            }}
+          >
+            <View style={styles.settingContent}>
+              <Icon.Moon color={theme.colors.primary} width={20} height={20} />
+              <View style={[styles.settingTextContainer, { marginLeft: 12 }]}>
+                <Text style={styles.settingLabel}>Log Evening Dose</Text>
+                <Text style={styles.settingDescription}>"Hey Siri, log evening dose"</Text>
+              </View>
+              <Icon.Plus color={theme.colors.primary} width={20} height={20} />
+            </View>
+          </TouchableOpacity>
+          
+          <TouchableOpacity
+            style={styles.settingButton}
+            onPress={async () => {
+              try {
+                await SiriShortcutsManager.presentShortcut('CheckRemainingDoses');
+              } catch (error) {
+                console.error('Error presenting shortcut:', error);
+              }
+            }}
+          >
+            <View style={styles.settingContent}>
+              <Icon.HelpCircle color={theme.colors.primary} width={20} height={20} />
+              <View style={[styles.settingTextContainer, { marginLeft: 12 }]}>
+                <Text style={styles.settingLabel}>Check Remaining Doses</Text>
+                <Text style={styles.settingDescription}>"Hey Siri, how many doses left"</Text>
+              </View>
+              <Icon.Plus color={theme.colors.primary} width={20} height={20} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
       
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>About</Text>
