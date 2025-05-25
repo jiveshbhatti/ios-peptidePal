@@ -46,7 +46,14 @@ jobs:
 
       - name: 📋 Build for iOS
         if: github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' || github.event_name == 'push'
-        run: eas build --platform ios --profile production --non-interactive --no-wait
+        id: ios-build
+        run: |
+          # Start the build and capture the build ID
+          BUILD_OUTPUT=$(eas build --platform ios --profile production --non-interactive --json --no-wait)
+          echo "Build output: $BUILD_OUTPUT"
+          BUILD_ID=$(echo $BUILD_OUTPUT | jq -r '.[0].id')
+          echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
+          echo "Started iOS build with ID: $BUILD_ID"
 
       - name: 📋 Build for Android
         if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all'
@@ -55,21 +62,37 @@ jobs:
       - name: 🚀 Submit to App Store
         if: (github.event.inputs.submit == 'true' || github.event_name == 'push') && (github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all')
         run: |
-          # Wait for build to complete (max 30 minutes)
-          echo "Waiting for iOS build to complete..."
+          # Wait for specific build to complete
+          BUILD_ID="${{ steps.ios-build.outputs.BUILD_ID }}"
+          echo "Waiting for iOS build $BUILD_ID to complete..."
+          
+          # Give EAS a moment to register the build
+          sleep 10
+          
           for i in {1..60}; do
-            BUILD_STATUS=$(eas build:list --platform ios --limit 1 --json | jq -r '.[0].status')
-            if [ "$BUILD_STATUS" = "FINISHED" ]; then
+            BUILD_STATUS=$(eas build:list --platform ios --limit 10 --json | jq -r ".[] | select(.id==\"$BUILD_ID\") | .status")
+            
+            if [ -z "$BUILD_STATUS" ]; then
+              echo "Build not found yet, waiting..."
+            elif [ "$BUILD_STATUS" = "finished" ]; then
               echo "Build completed! Submitting to App Store..."
-              eas submit --platform ios --latest --non-interactive
+              eas submit --platform ios --id $BUILD_ID --non-interactive
               break
-            elif [ "$BUILD_STATUS" = "ERRORED" ]; then
-              echo "Build failed!"
+            elif [ "$BUILD_STATUS" = "errored" ] || [ "$BUILD_STATUS" = "canceled" ]; then
+              echo "Build failed with status: $BUILD_STATUS"
               exit 1
+            else
+              echo "Build status: $BUILD_STATUS. Waiting..."
             fi
-            echo "Build status: $BUILD_STATUS. Waiting..."
+            
             sleep 30
           done
+          
+          # If we exit the loop without submitting, it means timeout
+          if [ "$BUILD_STATUS" != "finished" ]; then
+            echo "Build did not complete within 30 minutes"
+            exit 1
+          fi
 
       - name: 🚀 Submit to Google Play
         if: github.event.inputs.submit == 'true' && (github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all')
