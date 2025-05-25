@@ -38,10 +38,25 @@ export default function ProgressPhotosScreen() {
   const [selectedPhoto, setSelectedPhoto] = useState<ProgressPhotoDocument | null>(null);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [selectedType, setSelectedType] = useState<PhotoType>('front');
+  const [pendingPickerLaunch, setPendingPickerLaunch] = useState<PhotoType | null>(null);
 
   useEffect(() => {
     loadPhotos();
   }, []);
+
+  // Launch picker when modal is closed and we have a pending type
+  useEffect(() => {
+    if (!showTypeSelector && pendingPickerLaunch) {
+      console.log('Modal closed, launching picker for type:', pendingPickerLaunch);
+      // Small delay to ensure modal animation completes
+      const timer = setTimeout(() => {
+        launchImagePicker(pendingPickerLaunch);
+        setPendingPickerLaunch(null);
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [showTypeSelector, pendingPickerLaunch]);
 
   const loadPhotos = async () => {
     try {
@@ -82,41 +97,106 @@ export default function ProgressPhotosScreen() {
   };
 
   const handleAddPhoto = async () => {
+    // Check if we're on a supported platform
+    if (Platform.OS === 'web') {
+      Alert.alert('Not Supported', 'Photo upload is not supported on web.');
+      return;
+    }
+    
     const hasPermission = await requestPermissions();
     if (!hasPermission) return;
     
     setShowTypeSelector(true);
   };
 
-  const handleTypeSelected = async (type: PhotoType) => {
+  const handleTypeSelected = (type: PhotoType) => {
     console.log('Type selected:', type);
     setSelectedType(type);
+    setPendingPickerLaunch(type);
     setShowTypeSelector(false);
-    
-    // Add a small delay to ensure modal closes before opening picker
-    setTimeout(async () => {
-      try {
-        console.log('Launching image picker...');
-        const result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ImagePicker.MediaTypeOptions.Images,
-          allowsEditing: true,
-          aspect: [3, 4],
-          quality: 0.8,
-        });
+  };
 
-        console.log('Image picker result:', result);
-        
-        if (!result.canceled && result.assets[0]) {
-          console.log('Image selected, uploading...');
-          uploadPhoto(result.assets[0].uri, type);
-        } else {
-          console.log('Image picker cancelled');
-        }
-      } catch (error) {
-        console.error('Error launching image picker:', error);
-        Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
+  const launchImagePicker = async (type: PhotoType) => {
+    try {
+      console.log('Launching image picker...');
+      
+      // Verify ImagePicker is available
+      if (!ImagePicker || !ImagePicker.launchImageLibraryAsync) {
+        throw new Error('ImagePicker not available');
       }
-    }, 100);
+      
+      // Request permissions one more time to be sure
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Final permission check:', permissionResult.status);
+      
+      if (permissionResult.status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Photo library access is required. Please enable it in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+        return;
+      }
+      
+      // Simple configuration with just the essentials
+      console.log('About to call launchImageLibraryAsync...');
+      const result = await ImagePicker.launchImageLibraryAsync({
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.8,
+      });
+
+      console.log('Image picker result:', JSON.stringify(result, null, 2));
+      
+      if (result.canceled || result.cancelled) { // Check both spellings
+        console.log('Image picker was cancelled');
+        return;
+      }
+      
+      const imageUri = result.assets?.[0]?.uri || result.uri; // Handle different result formats
+      
+      if (imageUri) {
+        console.log('Image selected with URI:', imageUri);
+        await uploadPhoto(imageUri, type);
+      } else {
+        console.log('No image selected or invalid result structure');
+        console.log('Full result object:', result);
+        Alert.alert('Error', 'No image was selected. Please try again.');
+      }
+    } catch (error: any) {
+      console.error('Error in image picker:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        stack: error.stack
+      });
+      
+      // More detailed error handling
+      const errorMessage = error.message || error.toString() || 'Unknown error';
+      
+      if (errorMessage.includes('permission') || error.code === 'E_NO_PERMISSIONS') {
+        Alert.alert(
+          'Permission Required',
+          'Photo library access is required. Please enable it in Settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => Linking.openSettings() }
+          ]
+        );
+      } else if (errorMessage.includes('cancel') || error.code === 'E_PICKER_CANCELLED') {
+        // User cancelled, no need to show error
+        console.log('Picker was cancelled by user');
+      } else {
+        Alert.alert(
+          'Error', 
+          `Unable to open photo library: ${errorMessage}`,
+          [{ text: 'OK' }]
+        );
+      }
+    }
   };
 
   const uploadPhoto = async (uri: string, type: PhotoType) => {
