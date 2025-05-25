@@ -103,14 +103,39 @@ jobs:
           sleep 10
           
           for i in {1..60}; do
-            BUILD_STATUS=$(eas build:list --platform ios --limit 10 --json | jq -r ".[] | select(.id==\"$BUILD_ID\") | .status")
+            echo "Checking build status (attempt $i/60)..."
+            
+            # Get build list and save to file for debugging
+            BUILD_LIST_OUTPUT=$(eas build:list --platform ios --limit 10 --json 2>&1 || true)
+            echo "Build list raw output:"
+            echo "$BUILD_LIST_OUTPUT" | head -20
+            
+            # Try to extract JSON from output
+            BUILD_LIST_JSON=$(echo "$BUILD_LIST_OUTPUT" | grep -E '^\[' | head -1 || true)
+            
+            if [ -n "$BUILD_LIST_JSON" ]; then
+              BUILD_STATUS=$(echo "$BUILD_LIST_JSON" | jq -r ".[] | select(.id==\"$BUILD_ID\") | .status" 2>/dev/null || true)
+            else
+              echo "Could not extract JSON from build list output"
+              BUILD_STATUS=""
+            fi
+            
+            # Alternative: try to get status from the output text
+            if [ -z "$BUILD_STATUS" ]; then
+              echo "Trying alternative status detection..."
+              if echo "$BUILD_LIST_OUTPUT" | grep -q "$BUILD_ID.*finished"; then
+                BUILD_STATUS="finished"
+              elif echo "$BUILD_LIST_OUTPUT" | grep -q "$BUILD_ID.*error"; then
+                BUILD_STATUS="errored"
+              fi
+            fi
             
             if [ -z "$BUILD_STATUS" ]; then
-              echo "Build not found yet, waiting..."
+              echo "Build status not found, build might still be queued..."
             elif [ "$BUILD_STATUS" = "finished" ]; then
               echo "Build completed! Submitting to App Store..."
               eas submit --platform ios --id $BUILD_ID --non-interactive
-              break
+              exit 0
             elif [ "$BUILD_STATUS" = "errored" ] || [ "$BUILD_STATUS" = "canceled" ]; then
               echo "Build failed with status: $BUILD_STATUS"
               exit 1

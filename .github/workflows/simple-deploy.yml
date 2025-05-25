@@ -1,0 +1,63 @@
+name: Simple Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📱 Build iOS
+        run: |
+          echo "Starting iOS build..."
+          eas build --platform ios --profile production --non-interactive --no-wait
+          echo "Build queued successfully"
+
+      - name: ⏳ Wait for build
+        run: |
+          echo "Waiting 20 minutes for build to complete..."
+          echo "You can check progress at: https://expo.dev/accounts/jiveshbhatti/projects/peptidepal/builds"
+          sleep 1200
+
+      - name: 🚀 Submit to TestFlight
+        run: |
+          echo "Submitting latest build to TestFlight..."
+          eas submit --platform ios --latest --non-interactive || {
+            echo "First submission attempt failed, waiting 5 more minutes..."
+            sleep 300
+            echo "Retrying submission..."
+            eas submit --platform ios --latest --non-interactive
+          }
+
+      - name: ✅ Summary
+        if: always()
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build queued" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Waited for build completion" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Submitted to TestFlight" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "[View builds](https://expo.dev/accounts/jiveshbhatti/projects/peptidepal/builds)" >> $GITHUB_STEP_SUMMARY
