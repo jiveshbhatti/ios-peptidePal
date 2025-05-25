@@ -43,7 +43,7 @@ export default function PeptideDetailsScreen() {
   
   const peptide = peptides.find(p => p.id === peptideId);
   const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptideId);
-  const activeVial = peptide?.vials?.find(v => v.isActive);
+  const activeVial = peptide?.vials?.find(v => v.isCurrent || (v.isActive && !peptide.vials.some(vial => vial.isCurrent)));
   const remainingDoses = calculateRemainingDoses(peptide, inventoryPeptide);
   
   useEffect(() => {
@@ -191,28 +191,55 @@ export default function PeptideDetailsScreen() {
               Alert.alert('Error', 'Please enter a valid amount');
               return;
             }
-
-            try {
-              await inventoryService.activatePeptideVial(
-                peptide!.id, 
-                new Date().toISOString(),
-                parseFloat(bacWaterAmount)
-              );
-              AppHaptics.success();
-              await refreshData();
-              Alert.alert('Success', 'New vial activated successfully!');
-            } catch (error) {
-              AppHaptics.error();
-              console.error('Error activating vial:', error);
-              Alert.alert('Error', 'Failed to activate vial');
-            }
+            
+            // Ask if they want to start using it immediately
+            Alert.alert(
+              'Start Using New Vial?',
+              'Do you want to start using this vial immediately, or prepare it for later?',
+              [
+                {
+                  text: 'Prepare for Later',
+                  onPress: async () => {
+                    await activateVial(parseFloat(bacWaterAmount), false);
+                  }
+                },
+                {
+                  text: 'Start Using Now',
+                  onPress: async () => {
+                    await activateVial(parseFloat(bacWaterAmount), true);
+                  }
+                }
+              ]
+            );
           },
         },
       ],
       'plain-text',
-      '3', // Default to 3mL for NAD+
+      '3', // Default to 3mL
       'numeric'
     );
+  };
+  
+  const activateVial = async (bacWaterAmount: number, setAsCurrent: boolean) => {
+    try {
+      await inventoryService.activatePeptideVial(
+        peptide!.id, 
+        new Date().toISOString(),
+        bacWaterAmount,
+        setAsCurrent
+      );
+      AppHaptics.success();
+      await refreshData();
+      
+      const message = setAsCurrent 
+        ? 'New vial activated and set as current!'
+        : 'New vial activated and ready for use when needed!';
+      Alert.alert('Success', message);
+    } catch (error) {
+      AppHaptics.error();
+      console.error('Error activating vial:', error);
+      Alert.alert('Error', 'Failed to activate vial');
+    }
   };
 
   const handleEditVial = useCallback((vial: Vial) => {
@@ -239,6 +266,18 @@ export default function PeptideDetailsScreen() {
       Alert.alert('Success', 'Vial has been discarded');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to discard vial');
+      AppHaptics.error();
+    }
+  }, [peptideId, refreshData]);
+  
+  const handleSetVialAsCurrent = useCallback(async (vialId: string) => {
+    try {
+      await inventoryService.setVialAsCurrent(peptideId, vialId);
+      await refreshData();
+      AppHaptics.success();
+      Alert.alert('Success', 'Vial set as current!');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to set vial as current');
       AppHaptics.error();
     }
   }, [peptideId, refreshData]);
@@ -452,6 +491,7 @@ export default function PeptideDetailsScreen() {
                     onEdit={handleEditVial}
                     onDelete={handleDeleteVial}
                     onDiscard={handleDiscardVial}
+                    onSetAsCurrent={handleSetVialAsCurrent}
                   />
                 ))
             ) : (

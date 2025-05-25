@@ -31,7 +31,10 @@ export interface Vial {
 
   expirationDate?: string; // ISO date string
   dateAdded: string; // ISO date string, when this vial was added/started
-  isActive: boolean; // True if this is the current vial being used for new dose logs
+  isActive: boolean; // DEPRECATED - Use isCurrent instead
+  isCurrent?: boolean; // True if this is the current vial being used for new dose logs
+  isReconstituted?: boolean; // True if this vial has been reconstituted and is ready to use
+  reconstitutionDate?: string; // ISO date string when vial was reconstituted
   notes?: string;
   
   // Discard tracking

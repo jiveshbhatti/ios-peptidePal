@@ -115,7 +115,11 @@ export default function ProfileScreen() {
   };
 
   const navigateToMetrics = (type: 'weight' | 'measurements' | 'photos') => {
-    navigation.navigate('MetricsDetail', { type });
+    if (type === 'photos') {
+      navigation.navigate('ProgressPhotos');
+    } else {
+      navigation.navigate('MetricsDetail', { type });
+    }
   };
 
   const formatWeight = (weight: number, unit: string = 'lbs') => {

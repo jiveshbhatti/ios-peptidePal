@@ -7,7 +7,7 @@ import MetricsDetailScreen from '@/screens/MetricsDetailScreen';
 import EditProfileScreen from '@/screens/EditProfileScreen';
 import AddMetricScreen from '@/screens/AddMetricScreen';
 import ProgressPhotosScreen from '@/screens/ProgressPhotosScreen';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 export type RootStackParamList = {
   Main: { screen?: string };
@@ -22,6 +22,28 @@ export type RootStackParamList = {
 const Stack = createStackNavigator<RootStackParamList>();
 
 export default function RootNavigator() {
+  const { theme } = useAppTheme();
+  
+  // Create fonts object for React Navigation
+  const fonts = {
+    regular: {
+      fontFamily: theme.typography.fontFamily.regular,
+      fontWeight: 'normal' as const,
+    },
+    medium: {
+      fontFamily: theme.typography.fontFamily.medium,
+      fontWeight: '500' as const,
+    },
+    bold: {
+      fontFamily: theme.typography.fontFamily.bold,
+      fontWeight: 'bold' as const,
+    },
+    heavy: {
+      fontFamily: theme.typography.fontFamily.bold,
+      fontWeight: '900' as const,
+    },
+  };
+  
   return (
     <Stack.Navigator
       screenOptions={{
@@ -30,11 +52,13 @@ export default function RootNavigator() {
           shadowColor: 'transparent',
           elevation: 0,
         },
-        headerTintColor: theme.colors.gray[900],
+        headerTintColor: theme.colors.text,
         headerTitleStyle: {
           fontSize: theme.typography.fontSize.lg,
           fontWeight: '600',
         },
+        // Provide fonts for React Navigation internal components
+        fonts,
       }}
     >
       <Stack.Screen 

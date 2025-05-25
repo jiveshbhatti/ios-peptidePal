@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import * as Icon from 'react-native-feather';
-import { theme } from '@/constants/theme';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 // Screen imports
 import HomeScreen from '@/screens/HomeScreen';
@@ -13,28 +13,54 @@ import SettingsScreen from '@/screens/SettingsScreen';
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
+  const { theme } = useAppTheme();
+  
+  // Create fonts object for React Navigation
+  const fonts = {
+    regular: {
+      fontFamily: theme.typography.fontFamily.regular,
+      fontWeight: 'normal' as const,
+    },
+    medium: {
+      fontFamily: theme.typography.fontFamily.medium,
+      fontWeight: '500' as const,
+    },
+    bold: {
+      fontFamily: theme.typography.fontFamily.bold,
+      fontWeight: 'bold' as const,
+    },
+    heavy: {
+      fontFamily: theme.typography.fontFamily.bold,
+      fontWeight: '900' as const,
+    },
+  };
+  
   return (
     <Tab.Navigator
       screenOptions={{
         tabBarActiveTintColor: theme.colors.primary,
-        tabBarInactiveTintColor: theme.colors.gray[400],
+        tabBarInactiveTintColor: theme.colors.textTertiary,
         tabBarStyle: {
-          backgroundColor: theme.colors.background,
-          borderTopColor: theme.colors.gray[100],
+          backgroundColor: theme.colors.surface,
+          borderTopColor: theme.colors.border,
           borderTopWidth: 1,
           paddingBottom: 12,
           paddingTop: 8,
           height: 72,
         },
         headerStyle: {
-          backgroundColor: theme.colors.background,
-          borderBottomColor: theme.colors.gray[100],
+          backgroundColor: theme.colors.surface,
+          borderBottomColor: theme.colors.border,
           borderBottomWidth: 1,
         },
+        headerTintColor: theme.colors.text,
         headerTitleStyle: {
           fontSize: theme.typography.fontSize.lg,
           fontWeight: '600',
+          color: theme.colors.text,
         },
+        // Provide fonts for React Navigation internal components
+        fonts,
       }}
     >
       <Tab.Screen

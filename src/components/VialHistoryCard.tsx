@@ -12,13 +12,19 @@ interface VialHistoryCardProps {
   onEdit?: (vial: Vial) => void;
   onDelete?: (vialId: string) => void;
   onDiscard?: (vialId: string, reason: string) => void;
+  onSetAsCurrent?: (vialId: string) => void;
 }
 
-export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onDiscard }: VialHistoryCardProps) {
+export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onDiscard, onSetAsCurrent }: VialHistoryCardProps) {
   const isExpired = vial.expirationDate ? new Date(vial.expirationDate) < new Date() : false;
   const isEmpty = vial.remainingAmountUnits <= 0;
   const usagePercentage = ((vial.initialAmountUnits - vial.remainingAmountUnits) / vial.initialAmountUnits) * 100;
   const isDiscarded = vial.discardedAt || vial.discardReason;
+  const isCurrent = vial.isCurrent || vial.isActive; // Support both for backward compatibility
+  // A vial is reconstituted if: it has the flag, is active, has been used, or has a reconstitution date
+  const hasBeenUsed = vial.initialAmountUnits > vial.remainingAmountUnits;
+  const hasReconstitutionDate = vial.reconstitutionDate && vial.reconstitutionDate !== '';
+  const isReconstituted = vial.isReconstituted || vial.isActive || hasBeenUsed || hasReconstitutionDate;
   
   // Calculate days until expiry for warning
   const daysUntilExpiry = vial.expirationDate 
@@ -37,7 +43,8 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
     if (isExpired) return theme.colors.error;
     if (isExpiringSoon) return theme.colors.warning || '#F59E0B';
     if (isEmpty) return theme.colors.gray[500];
-    if (vial.isActive) return theme.colors.secondary;
+    if (isCurrent) return theme.colors.secondary;
+    if (isReconstituted) return theme.colors.primary; // Ready to use but not current
     return theme.colors.gray[500];
   };
 
@@ -46,7 +53,8 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
     if (isExpired) return 'Expired';
     if (isExpiringSoon) return `Expires in ${daysUntilExpiry} days`;
     if (isEmpty) return 'Empty';
-    if (vial.isActive) return 'Active';
+    if (isCurrent) return 'Active';
+    if (isReconstituted) return 'Ready'; // Reconstituted but not current
     return 'Inactive';
   };
 
@@ -55,7 +63,8 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
     if (isExpired) return <Icon.AlertCircle stroke={getStatusColor()} width={16} height={16} />;
     if (isExpiringSoon) return <Icon.AlertTriangle stroke={getStatusColor()} width={16} height={16} />;
     if (isEmpty) return <Icon.Package stroke={getStatusColor()} width={16} height={16} />;
-    if (vial.isActive) return <Icon.CheckCircle stroke={getStatusColor()} width={16} height={16} />;
+    if (isCurrent) return <Icon.CheckCircle stroke={getStatusColor()} width={16} height={16} />;
+    if (isReconstituted) return <Icon.Circle stroke={getStatusColor()} width={16} height={16} fill={getStatusColor()} />; // Filled circle for ready
     return <Icon.Circle stroke={getStatusColor()} width={16} height={16} />;
   };
 
@@ -130,11 +139,30 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
       { cancelable: true }
     );
   };
+  
+  const handleSetAsCurrent = () => {
+    AppHaptics.buttonTap();
+    Alert.alert(
+      'Set as Current Vial',
+      'Do you want to start using this vial for your doses?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Set as Current', 
+          onPress: () => {
+            if (onSetAsCurrent) {
+              onSetAsCurrent(vial.id);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   return (
     <View style={[
       styles.container, 
-      vial.isActive && styles.activeContainer,
+      isCurrent && styles.activeContainer,
       isExpiringSoon && styles.expiringContainer,
       isExpired && styles.expiredContainer,
       isDiscarded && styles.discardedContainer
@@ -218,6 +246,17 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
             <Text style={styles.discardLabel}>Discard Reason:</Text>
             <Text style={styles.discardText}>{vial.discardReason}</Text>
           </View>
+        )}
+        
+        {/* Set as Current button for reconstituted but not current vials */}
+        {isReconstituted && !isCurrent && !isExpired && !isEmpty && !isDiscarded && (
+          <TouchableOpacity
+            style={styles.setAsCurrentButton}
+            onPress={handleSetAsCurrent}
+          >
+            <Icon.PlayCircle stroke="white" width={18} height={18} />
+            <Text style={styles.setAsCurrentButtonText}>Set as Current</Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -351,5 +390,21 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.error,
     lineHeight: 20,
+  },
+  setAsCurrentButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: theme.spacing.sm,
+    backgroundColor: theme.colors.primary,
+    paddingVertical: theme.spacing.sm,
+    paddingHorizontal: theme.spacing.md,
+    borderRadius: theme.borderRadius.md,
+    marginTop: theme.spacing.md,
+  },
+  setAsCurrentButtonText: {
+    color: 'white',
+    fontSize: theme.typography.fontSize.sm,
+    fontWeight: '600',
   },
 });

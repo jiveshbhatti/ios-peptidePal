@@ -29,17 +29,19 @@ export default function Card({
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
     borderRadius: theme.borderRadius.lg,
   },
   default: {
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   outlined: {
     borderWidth: 1,
     borderColor: theme.colors.gray[200],
+    backgroundColor: theme.colors.background,
   },
   elevated: {
+    backgroundColor: theme.colors.background,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,

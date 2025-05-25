@@ -38,6 +38,12 @@ export default function Input({
             style
           ]}
           placeholderTextColor={theme.colors.gray[400]}
+          allowFontScaling={false}
+          underlineColorAndroid="transparent"
+          autoCorrect={false}
+          autoCapitalize="none"
+          accessible={true}
+          accessibilityRole="none"
           {...props}
         />
       </View>
@@ -61,10 +67,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: theme.colors.gray[200],
+    borderColor: theme.colors.border,
     borderRadius: theme.borderRadius.md,
     backgroundColor: theme.colors.background,
     height: 48,
+    shadowColor: theme.colors.gray[200],
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   inputError: {
     borderColor: theme.colors.error,
@@ -74,6 +85,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.md,
     fontSize: theme.typography.fontSize.base,
     color: theme.colors.gray[800],
+    height: '100%',
+    paddingVertical: 0,
   },
   inputWithIcon: {
     paddingLeft: 0,

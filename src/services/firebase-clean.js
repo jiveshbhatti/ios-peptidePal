@@ -224,11 +224,11 @@ const firebaseCleanService = {
         throw new Error(`Peptide ${peptideId} not found`);
       }
       
-      // Find the active vial
-      const activeVial = peptide.vials?.find(v => v.isActive);
+      // Find the current vial (using isCurrent or falling back to isActive for backward compatibility)
+      const activeVial = peptide.vials?.find(v => v.isCurrent || (v.isActive && !peptide.vials.some(vial => vial.isCurrent)));
       if (!activeVial) {
-        console.error('[Firebase Clean] No active vial found');
-        throw new Error('No active vial found for this peptide');
+        console.error('[Firebase Clean] No current vial found');
+        throw new Error('No current vial found for this peptide. Please set a vial as current before logging doses.');
       }
       
       // Create new dose log with vialId, cleaning out undefined values
@@ -261,12 +261,13 @@ const firebaseCleanService = {
         if (remainingDoses <= 0) {
           console.log(`[Firebase Clean] Vial ${activeVial.id} depleted based on dose logs, updating status`);
           
-          // Mark vial as inactive
+          // Mark vial as inactive and not current
           const updatedVials = peptide.vials.map(vial => {
             if (vial.id === activeVial.id) {
               return {
                 ...vial,
                 isActive: false,
+                isCurrent: false,
                 notes: `${vial.notes || ''}\nDepleted on ${new Date().toLocaleDateString()}`.trim()
               };
             }
@@ -437,7 +438,8 @@ const firebaseCleanService = {
       const updatePromises = vialsSnapshot.docs.map(vialDoc => {
         const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialDoc.id);
         return updateDoc(vialRef, {
-          isActive: vialDoc.id === vialId
+          isActive: vialDoc.id === vialId,
+          isCurrent: vialDoc.id === vialId
         });
       });
       
@@ -685,14 +687,15 @@ const firebaseCleanService = {
       // Update the vial to mark it as discarded
       await updateDoc(vialRef, {
         isActive: false,
+        isCurrent: false,
         remainingAmountUnits: 0,
         discardedAt: discardDate,
         discardReason: reason,
         notes: vialData.notes ? `${vialData.notes} | ${discardNote}` : discardNote
       });
       
-      // Update inventory if this was an active vial
-      if (vialData.isActive) {
+      // Update inventory if this was the current vial
+      if (vialData.isCurrent || vialData.isActive) {
         const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
         const inventorySnap = await getDoc(inventoryRef);
         if (inventorySnap.exists()) {

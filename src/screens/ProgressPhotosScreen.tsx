@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import * as Icon from 'react-native-feather';
 import * as ImagePicker from 'expo-image-picker';
 import { Timestamp } from 'firebase/firestore';
+import ImageOptimizer from '@/utils/image-optimization';
 
 const { width: screenWidth } = Dimensions.get('window');
 const imageSize = (screenWidth - theme.spacing.md * 3) / 2;
@@ -72,7 +73,7 @@ export default function ProgressPhotosScreen() {
     setShowTypeSelector(false);
     
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ImagePicker.MediaType.Images,
       allowsEditing: true,
       aspect: [3, 4],
       quality: 0.8,
@@ -86,6 +87,9 @@ export default function ProgressPhotosScreen() {
   const uploadPhoto = async (uri: string, type: PhotoType) => {
     setUploading(true);
     try {
+      // Optimize the image before upload
+      const optimized = await ImageOptimizer.optimizeProgressPhoto(uri);
+      
       const photoData = {
         date: Timestamp.now(),
         type,
@@ -93,10 +97,26 @@ export default function ProgressPhotosScreen() {
         notes: undefined, // Could prompt for notes
       };
       
-      await userProfileService.uploadProgressPhoto(uri, photoData);
+      // Upload using optimized images
+      await userProfileService.uploadProgressPhoto(
+        optimized.full.uri, 
+        photoData,
+        optimized.thumbnail.uri
+      );
       await loadPhotos();
-      Alert.alert('Success', 'Photo uploaded successfully');
+      
+      // Show size reduction info
+      // Calculate size reduction
+      const reduction = optimized.full.size > 0 ? 
+        Math.round((1 - optimized.full.size / (1024 * 1024 * 2)) * 100) : // Assume ~2MB original
+        0;
+      
+      Alert.alert(
+        'Success', 
+        `Photo uploaded successfully!\n\nSize reduced by ${reduction}%\nOptimized: ${ImageOptimizer.formatFileSize(optimized.full.size)}`
+      );
     } catch (error) {
+      console.error('Upload error:', error);
       Alert.alert('Error', 'Failed to upload photo');
     } finally {
       setUploading(false);
@@ -114,7 +134,7 @@ export default function ProgressPhotosScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await userProfileService.deleteProgressPhoto(photo.id, photo.imageUrl);
+              await userProfileService.deleteProgressPhoto(photo.id, photo.imageUrl, photo.thumbnailUrl);
               await loadPhotos();
               setSelectedPhoto(null);
             } catch (error) {
