@@ -72,15 +72,20 @@ export default function ProgressPhotosScreen() {
     setSelectedType(type);
     setShowTypeSelector(false);
     
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.8,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'] as any,
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.8,
+      });
 
-    if (!result.canceled && result.assets[0]) {
-      uploadPhoto(result.assets[0].uri, type);
+      if (!result.canceled && result.assets[0]) {
+        uploadPhoto(result.assets[0].uri, type);
+      }
+    } catch (error) {
+      console.error('Error launching image picker:', error);
+      Alert.alert('Error', 'Failed to open photo library. Please check permissions.');
     }
   };
 

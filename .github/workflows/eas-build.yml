@@ -1,0 +1,91 @@
+name: EAS Build and Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build for'
+        required: true
+        default: 'ios'
+        type: choice
+        options:
+          - ios
+          - android
+          - all
+      submit:
+        description: 'Submit to store after build'
+        required: true
+        default: true
+        type: boolean
+
+jobs:
+  build:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🏗 Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18.x
+          cache: npm
+
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      - name: 🏗 Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📋 Build for iOS
+        if: github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' || github.event_name == 'push'
+        run: eas build --platform ios --profile production --non-interactive --no-wait
+
+      - name: 📋 Build for Android
+        if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all'
+        run: eas build --platform android --profile production --non-interactive --no-wait
+
+      - name: 🚀 Submit to App Store
+        if: (github.event.inputs.submit == 'true' || github.event_name == 'push') && (github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all')
+        run: |
+          # Wait for build to complete (max 30 minutes)
+          echo "Waiting for iOS build to complete..."
+          for i in {1..60}; do
+            BUILD_STATUS=$(eas build:list --platform ios --limit 1 --json | jq -r '.[0].status')
+            if [ "$BUILD_STATUS" = "FINISHED" ]; then
+              echo "Build completed! Submitting to App Store..."
+              eas submit --platform ios --latest --non-interactive
+              break
+            elif [ "$BUILD_STATUS" = "ERRORED" ]; then
+              echo "Build failed!"
+              exit 1
+            fi
+            echo "Build status: $BUILD_STATUS. Waiting..."
+            sleep 30
+          done
+
+      - name: 🚀 Submit to Google Play
+        if: github.event.inputs.submit == 'true' && (github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all')
+        run: |
+          # Wait for build to complete (max 30 minutes)
+          echo "Waiting for Android build to complete..."
+          for i in {1..60}; do
+            BUILD_STATUS=$(eas build:list --platform android --limit 1 --json | jq -r '.[0].status')
+            if [ "$BUILD_STATUS" = "FINISHED" ]; then
+              echo "Build completed! Submitting to Google Play..."
+              eas submit --platform android --latest --non-interactive
+              break
+            elif [ "$BUILD_STATUS" = "ERRORED" ]; then
+              echo "Build failed!"
+              exit 1
+            fi
+            echo "Build status: $BUILD_STATUS. Waiting..."
+            sleep 30
+          done
