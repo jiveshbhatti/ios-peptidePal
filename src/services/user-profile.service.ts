@@ -28,7 +28,7 @@ import {
 } from '@/types/firebase';
 import { UserProfile, WeightEntry, BodyMeasurement } from '@/types/metrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { uriToBlob, uploadImageToFirebase } from '@/utils/blob-helper';
+import { uploadImageWithRetry } from '@/utils/firebase-storage-helper';
 
 // We'll use a hardcoded user ID for now since we don't have auth
 const USER_ID = 'default-user';
@@ -259,53 +259,35 @@ class UserProfileService {
       console.log('Storage config:', {
         bucket: storage._bucket?.bucket,
         host: storage._host,
-        protocol: storage._protocol
+        protocol: storage._protocol,
+        appId: storage._appId
       });
       
-      const storageRef = ref(storage, filename);
-      console.log('Storage ref created:', storageRef.fullPath);
+      // Upload main image with retry logic
+      const metadata = {
+        customMetadata: {
+          userId: USER_ID,
+          type: photoData.type,
+          uploadedAt: new Date().toISOString()
+        }
+      };
       
-      // Use robust blob handling for React Native
-      const uploadResult = await uploadImageToFirebase(imageUri, async (blob) => {
-        // Upload main image with metadata
-        const metadata = {
-          contentType: blob.type || 'image/jpeg',
-          customMetadata: {
-            userId: USER_ID,
-            type: photoData.type,
-            uploadedAt: new Date().toISOString()
-          }
-        };
-        
-        console.log('Uploading blob:', { size: blob.size, type: blob.type });
-        console.log('With metadata:', metadata);
-        
-        return await uploadBytes(storageRef, blob, metadata);
-      });
-      
-      console.log('Upload successful:', uploadResult.metadata);
-      const imageUrl = await getDownloadURL(uploadResult.ref);
-      console.log('Download URL obtained:', imageUrl);
+      const { url: imageUrl } = await uploadImageWithRetry(filename, imageUri, metadata);
       
       // Upload thumbnail if provided
       let thumbnailUrl = imageUrl;
       if (thumbnailUri) {
         const thumbFilename = `progress-photos/${USER_ID}/${timestamp}_${photoData.type}_thumb.jpg`;
-        const thumbRef = ref(storage, thumbFilename);
+        const thumbMetadata = {
+          customMetadata: {
+            userId: USER_ID,
+            type: photoData.type + '_thumb',
+            uploadedAt: new Date().toISOString()
+          }
+        };
         
-        const thumbUploadResult = await uploadImageToFirebase(thumbnailUri, async (blob) => {
-          const thumbMetadata = {
-            contentType: blob.type || 'image/jpeg',
-            customMetadata: {
-              userId: USER_ID,
-              type: photoData.type + '_thumb',
-              uploadedAt: new Date().toISOString()
-            }
-          };
-          return await uploadBytes(thumbRef, blob, thumbMetadata);
-        });
-        
-        thumbnailUrl = await getDownloadURL(thumbUploadResult.ref);
+        const { url } = await uploadImageWithRetry(thumbFilename, thumbnailUri, thumbMetadata);
+        thumbnailUrl = url;
       }
       
       // Save photo metadata to Firestore
