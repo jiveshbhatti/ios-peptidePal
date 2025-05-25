@@ -28,13 +28,14 @@ import {
 } from '@/types/firebase';
 import { UserProfile, WeightEntry, BodyMeasurement } from '@/types/metrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { uriToBlob, uploadImageToFirebase } from '@/utils/blob-helper';
 
 // We'll use a hardcoded user ID for now since we don't have auth
 const USER_ID = 'default-user';
 const PROFILE_COLLECTION = 'user_profiles';
 const WEIGHT_COLLECTION = 'weight_entries';
 const MEASUREMENTS_COLLECTION = 'body_measurements';
-const PHOTOS_COLLECTION = 'progress_photos';
+const PHOTOS_COLLECTION = 'progressPhotos';
 
 class UserProfileService {
   // Convert Firebase document to app type
@@ -245,28 +246,66 @@ class UserProfileService {
     thumbnailUri?: string
   ): Promise<string> {
     try {
-      // Convert image URI to blob
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-      
       // Create unique filename
       const timestamp = Date.now();
       const filename = `progress-photos/${USER_ID}/${timestamp}_${photoData.type}.jpg`;
-      const storageRef = ref(storage, filename);
+      console.log('Storage filename:', filename);
       
-      // Upload main image
-      const snapshot = await uploadBytes(storageRef, blob);
-      const imageUrl = await getDownloadURL(snapshot.ref);
+      // Check if storage is initialized
+      if (!storage) {
+        throw new Error('Firebase Storage is not initialized');
+      }
+      
+      console.log('Storage config:', {
+        bucket: storage._bucket?.bucket,
+        host: storage._host,
+        protocol: storage._protocol
+      });
+      
+      const storageRef = ref(storage, filename);
+      console.log('Storage ref created:', storageRef.fullPath);
+      
+      // Use robust blob handling for React Native
+      const uploadResult = await uploadImageToFirebase(imageUri, async (blob) => {
+        // Upload main image with metadata
+        const metadata = {
+          contentType: blob.type || 'image/jpeg',
+          customMetadata: {
+            userId: USER_ID,
+            type: photoData.type,
+            uploadedAt: new Date().toISOString()
+          }
+        };
+        
+        console.log('Uploading blob:', { size: blob.size, type: blob.type });
+        console.log('With metadata:', metadata);
+        
+        return await uploadBytes(storageRef, blob, metadata);
+      });
+      
+      console.log('Upload successful:', uploadResult.metadata);
+      const imageUrl = await getDownloadURL(uploadResult.ref);
+      console.log('Download URL obtained:', imageUrl);
       
       // Upload thumbnail if provided
       let thumbnailUrl = imageUrl;
       if (thumbnailUri) {
-        const thumbResponse = await fetch(thumbnailUri);
-        const thumbBlob = await thumbResponse.blob();
         const thumbFilename = `progress-photos/${USER_ID}/${timestamp}_${photoData.type}_thumb.jpg`;
         const thumbRef = ref(storage, thumbFilename);
-        const thumbSnapshot = await uploadBytes(thumbRef, thumbBlob);
-        thumbnailUrl = await getDownloadURL(thumbSnapshot.ref);
+        
+        const thumbUploadResult = await uploadImageToFirebase(thumbnailUri, async (blob) => {
+          const thumbMetadata = {
+            contentType: blob.type || 'image/jpeg',
+            customMetadata: {
+              userId: USER_ID,
+              type: photoData.type + '_thumb',
+              uploadedAt: new Date().toISOString()
+            }
+          };
+          return await uploadBytes(thumbRef, blob, thumbMetadata);
+        });
+        
+        thumbnailUrl = await getDownloadURL(thumbUploadResult.ref);
       }
       
       // Save photo metadata to Firestore
@@ -286,8 +325,32 @@ class UserProfileService {
       });
       
       return docRef.id;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error uploading progress photo:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        serverResponse: error.serverResponse,
+        customData: error.customData
+      });
+      
+      // If it's a storage error, add more context
+      if (error.code?.startsWith('storage/')) {
+        console.error('Storage error - check if:');
+        console.error('1. Storage bucket URL is correct');
+        console.error('2. Storage rules allow write access');
+        console.error('3. Firebase Storage is enabled in console');
+        console.error('4. Current storage bucket:', storage._bucket?.bucket);
+        
+        if (error.code === 'storage/unknown') {
+          console.error('Unknown storage error - common causes:');
+          console.error('- Incorrect storage bucket URL');
+          console.error('- Storage not enabled for project');
+          console.error('- Network connectivity issues');
+          console.error('- Invalid file format or corrupted blob');
+        }
+      }
+      
       throw error;
     }
   }

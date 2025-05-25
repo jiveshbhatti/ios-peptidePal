@@ -24,6 +24,7 @@ import * as Icon from 'react-native-feather';
 import * as ImagePicker from 'expo-image-picker';
 import { Timestamp } from 'firebase/firestore';
 import ImageOptimizer from '@/utils/image-optimization';
+import { testStorageConnection } from '@/utils/test-storage';
 
 const { width: screenWidth } = Dimensions.get('window');
 const imageSize = (screenWidth - theme.spacing.md * 3) / 2;
