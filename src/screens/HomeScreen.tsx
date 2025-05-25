@@ -388,8 +388,8 @@ export default function HomeScreen() {
             setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
             setShowSuccessAnimation(true);
             
-            // Check if vial was depleted
-            if (updatedPeptide) {
+            // Check if vial was depleted (add null check for vials)
+            if (updatedPeptide && updatedPeptide.vials) {
               const activeVial = updatedPeptide.vials?.find(v => v.isActive);
               if (!activeVial || activeVial.remainingAmountUnits <= 0) {
                 // Vial is depleted, show prompt to activate new one
@@ -424,8 +424,13 @@ export default function HomeScreen() {
               "Could not log the dose. Please try again."
             );
           } finally {
-            // Refresh data in background
-            await refreshData();
+            // Refresh data in background without awaiting
+            // This prevents potential race conditions during modal animations
+            setTimeout(() => {
+              refreshData().catch(err => 
+                console.error("Background refresh error:", err)
+              );
+            }, 500);
           }
         }}
       />

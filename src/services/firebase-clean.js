@@ -74,6 +74,9 @@ const timestampToString = (timestamp) => {
 
 // Helper to clean object by removing undefined values
 const cleanObject = (obj) => {
+  if (!obj || typeof obj !== 'object') {
+    return {};
+  }
   const cleaned = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value !== undefined) {
@@ -479,7 +482,7 @@ const firebaseCleanService = {
         strength: scheduleData.strength || '',
         typicalDosageUnits: scheduleData.typicalDosageUnits,
         dosageUnit: scheduleData.dosageUnit || 'mcg',
-        schedule: cleanObject(scheduleData.schedule), // Clean nested object
+        schedule: scheduleData.schedule ? cleanObject(scheduleData.schedule) : {}, // Clean nested object
         startDate: scheduleData.startDate || null,
         notes: scheduleData.notes || '',
         dataAiHint: scheduleData.dataAiHint || '',
