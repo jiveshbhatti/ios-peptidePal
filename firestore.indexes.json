@@ -29,7 +29,7 @@
       ]
     },
     {
-      "collectionGroup": "progress_photos",
+      "collectionGroup": "progressPhotos",
       "queryScope": "COLLECTION",
       "fields": [
         {
