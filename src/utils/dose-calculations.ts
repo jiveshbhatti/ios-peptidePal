@@ -11,8 +11,8 @@ export function calculateRemainingDoses(
 ): number {
   if (!peptide) return 0;
   
-  // Find the active vial
-  const activeVial = peptide.vials?.find(v => v.isActive);
+  // Find the current/active vial
+  const activeVial = peptide.vials?.find(v => v.isCurrent || (v.isActive && !peptide.vials.some(vial => vial.isCurrent)));
   
   if (!activeVial) {
     // No active vial, check if we have inventory data
@@ -88,8 +88,8 @@ export function calculateUsedDoses(
 ): number {
   if (!peptide) return 0;
   
-  // Find the active vial
-  const activeVial = peptide.vials?.find(v => v.isActive);
+  // Find the current/active vial
+  const activeVial = peptide.vials?.find(v => v.isCurrent || (v.isActive && !peptide.vials.some(vial => vial.isCurrent)));
   
   if (!activeVial) {
     // Check inventory data for usage tracking
@@ -209,10 +209,10 @@ export function getDrawVolumeForPeptide(
   peptide: Peptide, 
   inventoryPeptide?: InventoryPeptide | null
 ): number {
-  const activeVial = peptide.vials?.find(v => v.isActive);
+  const activeVial = peptide.vials?.find(v => v.isCurrent || (v.isActive && !peptide.vials.some(vial => vial.isCurrent)));
   
   // Debug logging for peptides without volume display
-  if ((peptide.name === 'Glow' || peptide.name === 'NAD+') && activeVial) {
+  if ((peptide.name === 'Glow' || peptide.name === 'NAD+' || peptide.name === 'Retatrutide') && activeVial) {
     console.log(`=== ${peptide.name} Draw Volume Debug ===`);
     console.log('Peptide typical dose:', peptide.typicalDosageUnits);
     console.log('Active vial has BAC water:', !!activeVial.reconstitutionBacWaterMl);
@@ -252,8 +252,9 @@ export function getDrawVolumeForPeptide(
     const bacWaterMl = activeVial.reconstitutionBacWaterMl;
     
     const result = calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
-    if (peptide.name === 'Glow' || peptide.name === 'NAD+') {
+    if (peptide.name === 'Glow' || peptide.name === 'NAD+' || peptide.name === 'Retatrutide') {
       console.log(`Calculated volume for ${peptide.name}: ${result} units`);
+      console.log(`  doseMcg: ${doseMcg}, totalMcgInVial: ${totalMcgInVial}, bacWaterMl: ${bacWaterMl}`);
     }
     return result;
   }
