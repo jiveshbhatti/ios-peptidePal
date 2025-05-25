@@ -134,7 +134,8 @@ export const inventoryService = {
   async activatePeptideVial(
     peptideId: string,
     reconstitutionDate: string,
-    bacWaterAmount?: number
+    bacWaterAmount?: number,
+    setAsCurrent: boolean = true
   ): Promise<boolean> {
     try {
       // Get inventory peptide
@@ -189,7 +190,9 @@ export const inventoryService = {
       const vialId = `${peptideId}_${Date.now()}`;
       const newVial = {
         id: vialId,
-        isActive: true,
+        isActive: setAsCurrent, // For backward compatibility
+        isCurrent: setAsCurrent, // New field - true if this should be the current vial
+        isReconstituted: true, // Always true for newly activated vials
         initialAmountUnits,
         remainingAmountUnits: initialAmountUnits,
         reconstitutionDate,
@@ -202,12 +205,17 @@ export const inventoryService = {
         notes: `Activated with ${bacWaterAmount || inventoryPeptide.bac_water_volume_added || 2}mL BAC water. Stock before activation: ${inventoryPeptide.num_vials + 1} vials.`
       };
 
-      // First deactivate all existing vials
-      const existingPeptide = await firebaseCleanService.getPeptideById(peptideId);
-      if (existingPeptide && existingPeptide.vials) {
-        for (const vial of existingPeptide.vials) {
-          const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vial.id);
-          await updateDoc(vialRef, { isActive: false });
+      // If setting as current, deactivate all other current vials
+      if (setAsCurrent) {
+        const existingPeptide = await firebaseCleanService.getPeptideById(peptideId);
+        if (existingPeptide && existingPeptide.vials) {
+          for (const vial of existingPeptide.vials) {
+            const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vial.id);
+            await updateDoc(vialRef, { 
+              isActive: false, 
+              isCurrent: false 
+            });
+          }
         }
       }
 
@@ -221,6 +229,37 @@ export const inventoryService = {
       return true;
     } catch (error) {
       console.error('Error activating vial:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Set a specific vial as the current active vial
+   */
+  async setVialAsCurrent(peptideId: string, vialId: string): Promise<boolean> {
+    try {
+      // First deactivate all vials for this peptide
+      const existingPeptide = await firebaseCleanService.getPeptideById(peptideId);
+      if (existingPeptide && existingPeptide.vials) {
+        for (const vial of existingPeptide.vials) {
+          const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vial.id);
+          await updateDoc(vialRef, { 
+            isActive: false, 
+            isCurrent: false 
+          });
+        }
+      }
+      
+      // Set the selected vial as current
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      await updateDoc(vialRef, { 
+        isActive: true, 
+        isCurrent: true 
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Error setting vial as current:', error);
       return false;
     }
   },

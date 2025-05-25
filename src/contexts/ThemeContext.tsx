@@ -13,9 +13,18 @@ interface ThemeContextType {
   toggleTheme: () => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-
 const THEME_STORAGE_KEY = '@PeptidePal:themeMode';
+
+// Default context value to prevent undefined errors
+const defaultContextValue: ThemeContextType = {
+  theme: lightTheme,
+  themeMode: 'system',
+  isDark: false,
+  setThemeMode: () => {},
+  toggleTheme: () => {},
+};
+
+export const ThemeContext = createContext<ThemeContextType>(defaultContextValue);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
@@ -63,36 +72,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const isDark = themeMode === 'dark' || 
                  (themeMode === 'system' && systemColorScheme === 'dark');
 
-  // Select the appropriate theme
-  const theme = isDark ? darkTheme : lightTheme;
-
-  if (isLoading) {
-    // Return light theme while loading to prevent flash
-    return (
-      <ThemeContext.Provider 
-        value={{
-          theme: lightTheme,
-          themeMode: 'light',
-          isDark: false,
-          setThemeMode: () => {},
-          toggleTheme: () => {},
-        }}
-      >
-        {children}
-      </ThemeContext.Provider>
-    );
-  }
+  // Always provide a valid theme object - use a complete theme to prevent undefined errors
+  const currentTheme: Theme = isDark ? darkTheme : lightTheme;
+  
+  const contextValue: ThemeContextType = {
+    theme: currentTheme,
+    themeMode,
+    isDark,
+    setThemeMode: isLoading ? () => {} : setThemeMode,
+    toggleTheme: isLoading ? () => {} : toggleTheme,
+  };
 
   return (
-    <ThemeContext.Provider 
-      value={{
-        theme,
-        themeMode,
-        isDark,
-        setThemeMode,
-        toggleTheme,
-      }}
-    >
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );
@@ -100,8 +92,5 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 
 export function useTheme() {
   const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
   return context;
 }

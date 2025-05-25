@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   Animated,
+  TextInput,
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import Card from '@/components/ui/Card';
@@ -44,6 +45,20 @@ export default function CalculatorScreenEnhanced() {
   const [desiredDoseAmount, setDesiredDoseAmount] = useState('');
   const [desiredDoseUnit, setDesiredDoseUnit] = useState<UnitType>('mcg');
   
+  // Syringe size selection
+  const [syringeSize, setSyringeSize] = useState<'1ml' | '0.5ml' | '0.3ml'>('1ml');
+  
+  // Input refs for focus management
+  const peptideInputRef = useRef<TextInput>(null);
+  const bacWaterInputRef = useRef<TextInput>(null);
+  const doseInputRef = useRef<TextInput>(null);
+  
+  // Debug input changes
+  const handlePeptideAmountChange = (text: string) => {
+    console.log('Peptide amount changed:', text);
+    setPeptideAmount(text);
+  };
+  
   // Reverse calculator inputs
   const [targetVolume, setTargetVolume] = useState('');
   const [targetVolumeUnit, setTargetVolumeUnit] = useState<VolumeUnit>('units');
@@ -65,6 +80,8 @@ export default function CalculatorScreenEnhanced() {
     { name: 'TB-500', amount: 5, unit: 'mg' as UnitType, typicalDose: 2.5, doseUnit: 'mg' as UnitType },
     { name: 'Semaglutide', amount: 3, unit: 'mg' as UnitType, typicalDose: 0.25, doseUnit: 'mg' as UnitType },
     { name: 'Tirzepatide', amount: 5, unit: 'mg' as UnitType, typicalDose: 2.5, doseUnit: 'mg' as UnitType },
+    { name: 'NAD+', amount: 50, unit: 'mg' as UnitType, typicalDose: 50, doseUnit: 'mg' as UnitType },
+    { name: 'Tesamorelin', amount: 1, unit: 'mg' as UnitType, typicalDose: 1, doseUnit: 'mg' as UnitType },
   ];
   
   // Handle unit conversion
@@ -80,13 +97,22 @@ export default function CalculatorScreenEnhanced() {
   const convertToMl = (amount: number, unit: VolumeUnit): number => {
     switch (unit) {
       case 'ml': return amount;
-      case 'units': return amount / 100; // 100 units = 1ml
+      case 'units': return amount / getUnitsPerMl(); // units per ml depends on syringe size
       default: return amount;
     }
   };
   
+  const getUnitsPerMl = (): number => {
+    switch (syringeSize) {
+      case '1ml': return 100;
+      case '0.5ml': return 50;
+      case '0.3ml': return 30;
+      default: return 100;
+    }
+  };
+  
   const convertMlToUnits = (ml: number): number => {
-    return ml * 100; // 1ml = 100 units
+    return ml * getUnitsPerMl();
   };
   
   const calculate = () => {
@@ -168,7 +194,7 @@ export default function CalculatorScreenEnhanced() {
         }),
       ]).start();
       
-      AppHaptics.impact();
+      AppHaptics.impactMedium();
     } catch (error) {
       console.error('Calculation error:', error);
       Alert.alert('Calculation Error', 'Unable to calculate. Please check your inputs.');
@@ -187,10 +213,12 @@ export default function CalculatorScreenEnhanced() {
   };
   
   const applyPreset = (preset: typeof presets[0]) => {
+    console.log('Applying preset:', preset);
     setPeptideAmount(preset.amount.toString());
     setPeptideUnit(preset.unit);
     setDesiredDoseAmount(preset.typicalDose.toString());
     setDesiredDoseUnit(preset.doseUnit);
+    setBacWaterAmount('3'); // Default to 3ml
     AppHaptics.selection();
   };
   
@@ -231,17 +259,18 @@ export default function CalculatorScreenEnhanced() {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       style={styles.container}
     >
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         {/* Calculator Mode Selector */}
         <View style={styles.modeSelector}>
           <SegmentedControl
-            options={[
-              { label: 'Standard', value: 'standard' },
-              { label: 'Target Volume', value: 'reverse' },
-            ]}
-            selectedValue={mode}
-            onValueChange={(value) => {
-              setMode(value as CalcMode);
+            options={['Standard', 'Target Volume']}
+            selectedIndex={mode === 'standard' ? 0 : 1}
+            onChange={(index) => {
+              setMode(index === 0 ? 'standard' : 'reverse');
               resetCalculator();
             }}
           />
@@ -269,7 +298,7 @@ export default function CalculatorScreenEnhanced() {
         </View>
         
         {/* Input Fields */}
-        <Card style={styles.inputCard}>
+        <Card style={styles.inputCard} variant="elevated">
           <Text style={styles.cardTitle}>Peptide Information</Text>
           
           <View style={styles.inputGroup}>
@@ -277,20 +306,19 @@ export default function CalculatorScreenEnhanced() {
             <View style={styles.inputRow}>
               <Input
                 value={peptideAmount}
-                onChangeText={setPeptideAmount}
+                onChangeText={handlePeptideAmountChange}
                 placeholder="0"
                 keyboardType="decimal-pad"
-                style={styles.input}
+                containerStyle={{ flex: 1, marginRight: theme.spacing.sm }}
               />
-              <SegmentedControl
-                options={[
-                  { label: 'mg', value: 'mg' },
-                  { label: 'mcg', value: 'mcg' },
-                ]}
-                selectedValue={peptideUnit}
-                onValueChange={(value) => setPeptideUnit(value as UnitType)}
-                style={styles.unitSelector}
-              />
+              <View style={styles.unitSelector}>
+                <SegmentedControl
+                  options={['mg', 'mcg']}
+                  selectedIndex={peptideUnit === 'mg' ? 0 : 1}
+                  onChange={(index) => setPeptideUnit(index === 0 ? 'mg' : 'mcg')}
+                  compact={true}
+                />
+              </View>
             </View>
           </View>
           
@@ -303,17 +331,16 @@ export default function CalculatorScreenEnhanced() {
                   onChangeText={setBacWaterAmount}
                   placeholder="0"
                   keyboardType="decimal-pad"
-                  style={styles.input}
+                  containerStyle={{ flex: 1, marginRight: theme.spacing.sm }}
                 />
-                <SegmentedControl
-                  options={[
-                    { label: 'ml', value: 'ml' },
-                    { label: 'units', value: 'units' },
-                  ]}
-                  selectedValue={bacWaterUnit}
-                  onValueChange={(value) => setBacWaterUnit(value as VolumeUnit)}
-                  style={styles.unitSelector}
-                />
+                <View style={styles.unitSelector}>
+                  <SegmentedControl
+                    options={['ml', 'units']}
+                    selectedIndex={bacWaterUnit === 'ml' ? 0 : 1}
+                    onChange={(index) => setBacWaterUnit(index === 0 ? 'ml' : 'units')}
+                    compact={true}
+                  />
+                </View>
               </View>
             </View>
           ) : (
@@ -325,17 +352,16 @@ export default function CalculatorScreenEnhanced() {
                   onChangeText={setTargetVolume}
                   placeholder="0"
                   keyboardType="decimal-pad"
-                  style={styles.input}
+                  containerStyle={{ flex: 1, marginRight: theme.spacing.sm }}
                 />
-                <SegmentedControl
-                  options={[
-                    { label: 'units', value: 'units' },
-                    { label: 'ml', value: 'ml' },
-                  ]}
-                  selectedValue={targetVolumeUnit}
-                  onValueChange={(value) => setTargetVolumeUnit(value as VolumeUnit)}
-                  style={styles.unitSelector}
-                />
+                <View style={styles.unitSelector}>
+                  <SegmentedControl
+                    options={['units', 'ml']}
+                    selectedIndex={targetVolumeUnit === 'units' ? 0 : 1}
+                    onChange={(index) => setTargetVolumeUnit(index === 0 ? 'units' : 'ml')}
+                    compact={true}
+                  />
+                </View>
               </View>
             </View>
           )}
@@ -348,29 +374,42 @@ export default function CalculatorScreenEnhanced() {
                 onChangeText={setDesiredDoseAmount}
                 placeholder="0"
                 keyboardType="decimal-pad"
-                style={styles.input}
+                containerStyle={{ flex: 1, marginRight: theme.spacing.sm }}
               />
-              <SegmentedControl
-                options={[
-                  { label: 'mg', value: 'mg' },
-                  { label: 'mcg', value: 'mcg' },
-                ]}
-                selectedValue={desiredDoseUnit}
-                onValueChange={(value) => setDesiredDoseUnit(value as UnitType)}
-                style={styles.unitSelector}
-              />
+              <View style={styles.unitSelector}>
+                <SegmentedControl
+                  options={['mg', 'mcg']}
+                  selectedIndex={desiredDoseUnit === 'mg' ? 0 : 1}
+                  onChange={(index) => setDesiredDoseUnit(index === 0 ? 'mg' : 'mcg')}
+                  compact={true}
+                />
+              </View>
             </View>
           </View>
           
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Doses Per Day (Optional)</Text>
-            <Input
-              value={dosesPerDay}
-              onChangeText={setDosesPerDay}
-              placeholder="1"
-              keyboardType="number-pad"
-              style={[styles.input, { width: '100%' }]}
-            />
+            <Text style={styles.inputLabel}>Syringe Size</Text>
+            <View style={styles.syringeSelector}>
+              <SegmentedControl
+                options={['1ml (100u)', '0.5ml (50u)', '0.3ml (30u)']}
+                selectedIndex={syringeSize === '1ml' ? 0 : syringeSize === '0.5ml' ? 1 : 2}
+                onChange={(index) => setSyringeSize(index === 0 ? '1ml' : index === 1 ? '0.5ml' : '0.3ml')}
+              />
+            </View>
+          </View>
+          
+          <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+            <Text style={styles.inputLabel}>Doses Per Day</Text>
+            <View style={styles.inputRow}>
+              <Input
+                value={dosesPerDay}
+                onChangeText={setDosesPerDay}
+                placeholder="1"
+                keyboardType="number-pad"
+                containerStyle={{ flex: 1 }}
+              />
+              <Text style={styles.optionalLabel}>(Optional)</Text>
+            </View>
           </View>
         </Card>
         
@@ -424,7 +463,10 @@ export default function CalculatorScreenEnhanced() {
                 <View style={styles.resultContent}>
                   <Text style={styles.resultLabel}>Injection Volume</Text>
                   <Text style={styles.resultValue}>
-                    {result.injectionVolume.toFixed(2)} ml ({result.injectionUnits.toFixed(0)} units)
+                    {result.injectionVolume.toFixed(3)} ml ({result.injectionUnits.toFixed(0)} units)
+                  </Text>
+                  <Text style={styles.resultSubtext}>
+                    on {syringeSize} syringe
                   </Text>
                 </View>
               </View>
@@ -454,20 +496,21 @@ export default function CalculatorScreenEnhanced() {
             
             {/* Insulin Syringe Guide */}
             <Card style={styles.guideCard}>
-              <Text style={styles.guideTitle}>Insulin Syringe Guide</Text>
+              <Text style={styles.guideTitle}>Syringe Measurement Guide</Text>
               <View style={styles.guideContent}>
                 <View style={styles.guideItem}>
                   <Text style={styles.guideUnits}>{result.injectionUnits.toFixed(0)} units</Text>
-                  <Text style={styles.guideDescription}>on a U-100 insulin syringe</Text>
+                  <Text style={styles.guideDescription}>on your {syringeSize} syringe</Text>
                 </View>
-                {result.injectionUnits > 50 && (
+                {((syringeSize === '0.5ml' && result.injectionUnits > 50) || 
+                  (syringeSize === '0.3ml' && result.injectionUnits > 30)) ? (
                   <View style={styles.guideWarning}>
                     <Icon.AlertCircle color={theme.colors.warning} width={16} height={16} />
                     <Text style={styles.guideWarningText}>
-                      Consider using a 1ml syringe for volumes over 50 units
+                      Volume exceeds syringe capacity. Consider using a larger syringe
                     </Text>
                   </View>
-                )}
+                ) : null}
               </View>
             </Card>
           </Animated.View>
@@ -495,13 +538,13 @@ export default function CalculatorScreenEnhanced() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: theme.colors.surface,
   },
   modeSelector: {
     padding: theme.spacing.md,
   },
   presetsSection: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
@@ -516,10 +559,12 @@ const styles = StyleSheet.create({
     gap: theme.spacing.sm,
   },
   presetButton: {
-    backgroundColor: theme.colors.gray[100],
+    backgroundColor: theme.colors.background,
     borderRadius: theme.borderRadius.md,
     padding: theme.spacing.md,
     minWidth: 120,
+    borderWidth: 1,
+    borderColor: theme.colors.gray[200],
   },
   presetName: {
     fontSize: theme.typography.fontSize.base,
@@ -532,8 +577,9 @@ const styles = StyleSheet.create({
     color: theme.colors.gray[600],
   },
   inputCard: {
-    margin: theme.spacing.md,
-    padding: theme.spacing.md,
+    marginHorizontal: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.lg,
   },
   cardTitle: {
     fontSize: theme.typography.fontSize.lg,
@@ -542,23 +588,27 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.md,
   },
   inputGroup: {
-    marginBottom: theme.spacing.md,
+    marginBottom: theme.spacing.lg,
   },
   inputLabel: {
     fontSize: theme.typography.fontSize.sm,
-    fontWeight: '500',
+    fontWeight: '600',
     color: theme.colors.gray[700],
-    marginBottom: theme.spacing.xs,
+    marginBottom: theme.spacing.sm,
   },
   inputRow: {
     flexDirection: 'row',
-    gap: theme.spacing.sm,
+    alignItems: 'center',
   },
   input: {
     flex: 1,
   },
   unitSelector: {
-    width: 100,
+    width: 120,
+    marginLeft: theme.spacing.sm,
+  },
+  syringeSelector: {
+    width: '100%',
   },
   resultsContainer: {
     paddingHorizontal: theme.spacing.md,
@@ -607,6 +657,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.colors.gray[800],
   },
+  resultSubtext: {
+    fontSize: theme.typography.fontSize.xs,
+    color: theme.colors.gray[500],
+    marginTop: 2,
+  },
   guideCard: {
     padding: theme.spacing.md,
     backgroundColor: theme.colors.primary + '10',
@@ -650,7 +705,9 @@ const styles = StyleSheet.create({
   actions: {
     flexDirection: 'row',
     gap: theme.spacing.sm,
-    padding: theme.spacing.md,
+    paddingHorizontal: theme.spacing.md,
+    paddingBottom: theme.spacing.xl,
+    paddingTop: theme.spacing.sm,
   },
   actionButton: {
     flex: 1,

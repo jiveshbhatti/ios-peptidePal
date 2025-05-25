@@ -1,7 +1,7 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import * as Icon from 'react-native-feather';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useAppTheme } from '@/hooks/useAppTheme';
 
 // Screen imports
 import HomeScreen from '@/screens/HomeScreen';
@@ -13,7 +13,27 @@ import SettingsScreen from '@/screens/SettingsScreen';
 const Tab = createBottomTabNavigator();
 
 export default function TabNavigator() {
-  const { theme } = useTheme();
+  const { theme } = useAppTheme();
+  
+  // Create fonts object for React Navigation
+  const fonts = {
+    regular: {
+      fontFamily: theme.typography.fontFamily.regular,
+      fontWeight: 'normal' as const,
+    },
+    medium: {
+      fontFamily: theme.typography.fontFamily.medium,
+      fontWeight: '500' as const,
+    },
+    bold: {
+      fontFamily: theme.typography.fontFamily.bold,
+      fontWeight: 'bold' as const,
+    },
+    heavy: {
+      fontFamily: theme.typography.fontFamily.bold,
+      fontWeight: '900' as const,
+    },
+  };
   
   return (
     <Tab.Navigator
@@ -39,6 +59,8 @@ export default function TabNavigator() {
           fontWeight: '600',
           color: theme.colors.text,
         },
+        // Provide fonts for React Navigation internal components
+        fonts,
       }}
     >
       <Tab.Screen

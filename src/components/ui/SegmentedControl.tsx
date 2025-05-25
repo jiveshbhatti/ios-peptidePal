@@ -13,15 +13,25 @@ interface SegmentedControlProps {
   options: string[];
   selectedIndex: number;
   onChange: (index: number) => void;
+  style?: any;
+  compact?: boolean;
 }
 
 export default function SegmentedControl({
   options,
   selectedIndex,
   onChange,
+  style,
+  compact = false,
 }: SegmentedControlProps) {
-  const { width } = useWindowDimensions();
-  const segmentWidth = (width - theme.spacing.md * 2) / options.length;
+  const containerRef = React.useRef<View>(null);
+  const [containerWidth, setContainerWidth] = React.useState(0);
+  
+  const segmentWidth = compact && containerWidth > 0 
+    ? containerWidth / options.length 
+    : containerWidth > 0 
+      ? (containerWidth - 4) / options.length  // 4 for padding
+      : 100 / options.length; // fallback percentage
   
   const translateX = React.useRef(new Animated.Value(selectedIndex * segmentWidth)).current;
   
@@ -36,33 +46,51 @@ export default function SegmentedControl({
   }, [selectedIndex, segmentWidth]);
 
   return (
-    <View style={styles.container}>
-      <Animated.View
-        style={[
-          styles.selectedIndicator,
-          {
-            width: segmentWidth,
-            transform: [{ translateX }],
-          },
-        ]}
-      />
-      {options.map((option, index) => (
-        <TouchableOpacity
-          key={option}
-          style={[styles.option, { width: segmentWidth }]}
-          onPress={() => onChange(index)}
-          activeOpacity={0.7}
-        >
-          <Text
+    <View 
+      ref={containerRef}
+      style={[
+        styles.container, 
+        compact && styles.compactContainer,
+        style
+      ]}
+      onLayout={(event) => {
+        const { width } = event.nativeEvent.layout;
+        setContainerWidth(width - (compact ? 0 : 4)); // subtract padding
+      }}
+    >
+      {containerWidth > 0 && (
+        <>
+          <Animated.View
             style={[
-              styles.optionText,
-              selectedIndex === index && styles.selectedOptionText,
+              styles.selectedIndicator,
+              {
+                width: segmentWidth,
+                transform: [{ translateX }],
+              },
             ]}
-          >
-            {option}
-          </Text>
-        </TouchableOpacity>
-      ))}
+          />
+          {options.map((option, index) => (
+            <TouchableOpacity
+              key={`segment-${index}`}
+              style={[styles.option, { width: segmentWidth }]}
+              onPress={() => onChange(index)}
+              activeOpacity={0.7}
+            >
+              <Text
+                style={[
+                  styles.optionText,
+                  compact && styles.compactText,
+                  selectedIndex === index && styles.selectedOptionText,
+                ]}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {option}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </>
+      )}
     </View>
   );
 }
@@ -77,6 +105,11 @@ const styles = StyleSheet.create({
     height: 44,
     position: 'relative',
     padding: 2,
+  },
+  compactContainer: {
+    marginHorizontal: 0,
+    marginVertical: 0,
+    height: 36,
   },
   selectedIndicator: {
     position: 'absolute',
@@ -103,5 +136,8 @@ const styles = StyleSheet.create({
   selectedOptionText: {
     color: theme.colors.gray[800],
     fontWeight: '600',
+  },
+  compactText: {
+    fontSize: theme.typography.fontSize.xs,
   },
 });
