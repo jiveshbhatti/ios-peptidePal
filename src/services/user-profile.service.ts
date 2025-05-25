@@ -325,8 +325,9 @@ class UserProfileService {
         imageUrl,
         thumbnailUrl,
         type: photoData.type,
-        weight: photoData.weight,
-        notes: photoData.notes,
+        // Only include weight and notes if they have values
+        ...(photoData.weight != null && { weight: photoData.weight }),
+        ...(photoData.notes != null && { notes: photoData.notes }),
       };
       
       const docRef = await addDoc(collection(db, PHOTOS_COLLECTION), {

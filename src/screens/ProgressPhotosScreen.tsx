@@ -338,7 +338,6 @@ export default function ProgressPhotosScreen() {
 
       {photos.length > 0 && (
         <FloatingActionButton
-          icon="plus"
           onPress={handleAddPhoto}
           style={styles.fab}
         />
