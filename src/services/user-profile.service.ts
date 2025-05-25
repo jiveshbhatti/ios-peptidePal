@@ -272,7 +272,7 @@ class UserProfileService {
       // Save photo metadata to Firestore
       const newPhoto: NewProgressPhotoDocument = {
         userId: USER_ID,
-        date: Timestamp.fromDate(new Date(photoData.date.toDate())),
+        date: photoData.date instanceof Timestamp ? photoData.date : Timestamp.fromDate(new Date(photoData.date)),
         imageUrl,
         thumbnailUrl,
         type: photoData.type,

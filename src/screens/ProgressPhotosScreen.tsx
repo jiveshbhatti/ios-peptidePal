@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
+  Platform,
+  Linking,
 } from 'react-native';
 import { theme } from '@/constants/theme';
 import { useNavigation } from '@react-navigation/native';
@@ -53,12 +55,30 @@ export default function ProgressPhotosScreen() {
   };
 
   const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Denied', 'We need camera roll permissions to upload photos.');
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      console.log('Media library permission status:', status);
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required', 
+          'Please enable photo library access in Settings to upload progress photos.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Open Settings', onPress: () => {
+              // On iOS, this will open the app settings
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              }
+            }}
+          ]
+        );
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error requesting permissions:', error);
       return false;
     }
-    return true;
   };
 
   const handleAddPhoto = async () => {
@@ -69,31 +89,44 @@ export default function ProgressPhotosScreen() {
   };
 
   const handleTypeSelected = async (type: PhotoType) => {
+    console.log('Type selected:', type);
     setSelectedType(type);
     setShowTypeSelector(false);
     
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'] as any,
-        allowsEditing: true,
-        aspect: [3, 4],
-        quality: 0.8,
-      });
+    // Add a small delay to ensure modal closes before opening picker
+    setTimeout(async () => {
+      try {
+        console.log('Launching image picker...');
+        const result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          aspect: [3, 4],
+          quality: 0.8,
+        });
 
-      if (!result.canceled && result.assets[0]) {
-        uploadPhoto(result.assets[0].uri, type);
+        console.log('Image picker result:', result);
+        
+        if (!result.canceled && result.assets[0]) {
+          console.log('Image selected, uploading...');
+          uploadPhoto(result.assets[0].uri, type);
+        } else {
+          console.log('Image picker cancelled');
+        }
+      } catch (error) {
+        console.error('Error launching image picker:', error);
+        Alert.alert('Error', `Failed to open photo library: ${error.message || 'Unknown error'}`);
       }
-    } catch (error) {
-      console.error('Error launching image picker:', error);
-      Alert.alert('Error', 'Failed to open photo library. Please check permissions.');
-    }
+    }, 100);
   };
 
   const uploadPhoto = async (uri: string, type: PhotoType) => {
+    console.log('Starting upload for URI:', uri);
     setUploading(true);
     try {
       // Optimize the image before upload
+      console.log('Optimizing image...');
       const optimized = await ImageOptimizer.optimizeProgressPhoto(uri);
+      console.log('Image optimized:', optimized);
       
       const photoData = {
         date: Timestamp.now(),
@@ -103,11 +136,13 @@ export default function ProgressPhotosScreen() {
       };
       
       // Upload using optimized images
+      console.log('Uploading to Firebase...');
       await userProfileService.uploadProgressPhoto(
         optimized.full.uri, 
         photoData,
         optimized.thumbnail.uri
       );
+      console.log('Upload complete, reloading photos...');
       await loadPhotos();
       
       // Show size reduction info
@@ -122,7 +157,7 @@ export default function ProgressPhotosScreen() {
       );
     } catch (error) {
       console.error('Upload error:', error);
-      Alert.alert('Error', 'Failed to upload photo');
+      Alert.alert('Error', `Failed to upload photo: ${error.message || 'Unknown error'}`);
     } finally {
       setUploading(false);
     }
