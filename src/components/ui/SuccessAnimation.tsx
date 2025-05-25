@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Modal } from 'react-native';
 import Animated, {
   useSharedValue,
@@ -7,7 +7,6 @@ import Animated, {
   withSequence,
   withDelay,
   Easing,
-  runOnJS,
 } from 'react-native-reanimated';
 import * as Icon from 'react-native-feather';
 import { theme } from '@/constants/theme';
@@ -25,14 +24,18 @@ export default function SuccessAnimation({
 }: SuccessAnimationProps) {
   const opacity = useSharedValue(0);
   const scale = useSharedValue(0.3);
-  const checkmarkProgress = useSharedValue(0);
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     if (visible) {
+      // Clear any existing timeout
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
       // Reset values
       opacity.value = 0;
       scale.value = 0.3;
-      checkmarkProgress.value = 0;
       
       // Start animation sequence
       opacity.value = withTiming(1, { duration: 300 });
@@ -40,23 +43,24 @@ export default function SuccessAnimation({
         withTiming(1.1, { duration: 300, easing: Easing.out(Easing.back()) }),
         withTiming(1, { duration: 200 })
       );
-      checkmarkProgress.value = withDelay(
-        200,
-        withTiming(1, { duration: 500 }, () => {
-          'worklet';
-          // Hide after animation completes with a delay
-          runOnJS(() => {
-            setTimeout(() => {
-              opacity.value = withTiming(0, { duration: 300 }, () => {
-                'worklet';
-                runOnJS(onComplete)();
-              });
-            }, 800);
-          })();
-        })
-      );
+      
+      // Use a simple timeout instead of complex animation callbacks
+      timeoutRef.current = setTimeout(() => {
+        opacity.value = withTiming(0, { duration: 300 });
+        
+        // Call onComplete after fade out
+        setTimeout(() => {
+          onComplete();
+        }, 300);
+      }, 1500); // Total display time: 500ms for animations + 1000ms display
     }
-  }, [visible, opacity, scale, checkmarkProgress, onComplete]);
+    
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [visible, onComplete]);
 
   const containerStyle = useAnimatedStyle(() => {
     return {

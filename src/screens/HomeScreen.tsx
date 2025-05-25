@@ -383,10 +383,14 @@ export default function HomeScreen() {
             console.log("Using Firebase service for dose logging");
             const updatedPeptide = await service.addDoseLog(selectedPeptide.id, doseData);
             
-            // Close the modal and show success animation
+            // Close the modal first
             setShowDoseModal(false);
-            setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
-            setShowSuccessAnimation(true);
+            
+            // Show success animation after a brief delay to ensure modal is closed
+            setTimeout(() => {
+              setSuccessMessage(`${selectedPeptide.name} dose logged successfully!`);
+              setShowSuccessAnimation(true);
+            }, 100);
             
             // Check if vial was depleted (add null check for vials)
             if (updatedPeptide && updatedPeptide.vials) {
