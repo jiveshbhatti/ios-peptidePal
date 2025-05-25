@@ -14,13 +14,17 @@ if [ "$1" ]; then
     echo -e "${YELLOW}Using specified build ID: $BUILD_ID${NC}"
 else
     echo -e "${YELLOW}Using latest build${NC}"
-    BUILD_ID="--latest"
+    BUILD_ID=""
 fi
 
 # Submit to TestFlight
 echo ""
 echo "📱 Submitting to App Store Connect..."
-npx eas-cli submit --platform ios $BUILD_ID
+if [ "$BUILD_ID" ]; then
+    npx eas-cli submit --platform ios --id $BUILD_ID
+else
+    npx eas-cli submit --platform ios --latest
+fi
 
 # Check if submission was successful
 if [ $? -eq 0 ]; then
