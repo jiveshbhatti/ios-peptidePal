@@ -26,7 +26,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyAMnokBM7CVDE265ZLhZROjWrQ5w2DR2P0",
   authDomain: "peptidepal.firebaseapp.com",
   projectId: "peptidepal",
-  storageBucket: "peptidepal.appspot.com", 
+  storageBucket: "peptidepal.firebasestorage.app", 
   messagingSenderId: "229078698562",
   appId: "1:229078698562:web:a3a431131daad253b7fbdb"
 };
