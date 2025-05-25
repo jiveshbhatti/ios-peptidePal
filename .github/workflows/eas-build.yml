@@ -51,7 +51,14 @@ jobs:
           # Start the build and capture the build ID
           BUILD_OUTPUT=$(eas build --platform ios --profile production --non-interactive --json --no-wait)
           echo "Build output: $BUILD_OUTPUT"
-          BUILD_ID=$(echo $BUILD_OUTPUT | jq -r '.[0].id')
+          BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.[0].id // empty')
+          
+          if [ -z "$BUILD_ID" ]; then
+            echo "Failed to extract build ID from output"
+            echo "Trying alternative extraction..."
+            BUILD_ID=$(echo "$BUILD_OUTPUT" | jq -r '.id // empty')
+          fi
+          
           echo "BUILD_ID=$BUILD_ID" >> $GITHUB_OUTPUT
           echo "Started iOS build with ID: $BUILD_ID"
 
@@ -60,10 +67,17 @@ jobs:
         run: eas build --platform android --profile production --non-interactive --no-wait
 
       - name: 🚀 Submit to App Store
-        if: (github.event.inputs.submit == 'true' || github.event_name == 'push') && (github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all')
+        if: (github.event.inputs.submit == 'true' || github.event_name == 'push') && (github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'all' || github.event_name == 'push')
         run: |
           # Wait for specific build to complete
           BUILD_ID="${{ steps.ios-build.outputs.BUILD_ID }}"
+          
+          if [ -z "$BUILD_ID" ]; then
+            echo "ERROR: No build ID found. Cannot submit to TestFlight."
+            echo "This usually means the build step failed to capture the ID."
+            exit 1
+          fi
+          
           echo "Waiting for iOS build $BUILD_ID to complete..."
           
           # Give EAS a moment to register the build
@@ -95,7 +109,7 @@ jobs:
           fi
 
       - name: 🚀 Submit to Google Play
-        if: github.event.inputs.submit == 'true' && (github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all')
+        if: github.event.inputs.submit == 'true' && (github.event.inputs.platform == 'android' || github.event.inputs.platform == 'all') && github.event_name != 'push'
         run: |
           # Wait for build to complete (max 30 minutes)
           echo "Waiting for Android build to complete..."
@@ -112,3 +126,18 @@ jobs:
             echo "Build status: $BUILD_STATUS. Waiting..."
             sleep 30
           done
+          
+      - name: 📊 Summary
+        if: always()
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Trigger: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "- iOS Build: ✅ Started" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ steps.ios-build.outputs.BUILD_ID }}" ]; then
+            echo "- Build ID: ${{ steps.ios-build.outputs.BUILD_ID }}" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- Build ID: ❌ Not captured" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Check builds at: https://expo.dev/accounts/jiveshbhatti/projects/peptidepal/builds" >> $GITHUB_STEP_SUMMARY
