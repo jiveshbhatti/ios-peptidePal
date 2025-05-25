@@ -234,7 +234,35 @@ class UserProfileService {
         ...doc.data(),
         id: doc.id,
       } as ProgressPhotoDocument));
-    } catch (error) {
+    } catch (error: any) {
+      // If index is not ready, fall back to simpler query
+      if (error.code === 'failed-precondition' && error.message?.includes('index')) {
+        console.warn('Index not ready, using fallback query without ordering');
+        try {
+          const fallbackQuery = query(
+            collection(db, PHOTOS_COLLECTION),
+            where('userId', '==', USER_ID),
+            limit(limitCount)
+          );
+          
+          const querySnapshot = await getDocs(fallbackQuery);
+          const photos = querySnapshot.docs.map(doc => ({
+            ...doc.data(),
+            id: doc.id,
+          } as ProgressPhotoDocument));
+          
+          // Sort manually in memory
+          return photos.sort((a, b) => {
+            const dateA = a.date.toDate();
+            const dateB = b.date.toDate();
+            return dateB.getTime() - dateA.getTime();
+          });
+        } catch (fallbackError) {
+          console.error('Fallback query also failed:', fallbackError);
+          throw fallbackError;
+        }
+      }
+      
       console.error('Error getting progress photos:', error);
       throw error;
     }
