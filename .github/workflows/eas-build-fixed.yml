@@ -105,42 +105,22 @@ jobs:
           for i in {1..60}; do
             echo "Checking build status (attempt $i/60)..."
             
-            # Get build list and save to file for debugging
-            BUILD_LIST_OUTPUT=$(eas build:list --platform ios --limit 10 --json 2>&1 || true)
-            echo "Build list raw output:"
-            echo "$BUILD_LIST_OUTPUT" | head -20
+            # Get build status with proper flags
+            BUILD_STATUS=$(eas build:list --platform ios --limit 10 --json --non-interactive | jq -r ".[] | select(.id==\"$BUILD_ID\") | .status" 2>/dev/null || echo "NOT_FOUND")
             
-            # Try to extract JSON from output
-            BUILD_LIST_JSON=$(echo "$BUILD_LIST_OUTPUT" | grep -E '^\[' | head -1 || true)
-            
-            if [ -n "$BUILD_LIST_JSON" ]; then
-              BUILD_STATUS=$(echo "$BUILD_LIST_JSON" | jq -r ".[] | select(.id==\"$BUILD_ID\") | .status" 2>/dev/null || true)
-            else
-              echo "Could not extract JSON from build list output"
-              BUILD_STATUS=""
-            fi
-            
-            # Alternative: try to get status from the output text
-            if [ -z "$BUILD_STATUS" ]; then
-              echo "Trying alternative status detection..."
-              if echo "$BUILD_LIST_OUTPUT" | grep -q "$BUILD_ID.*finished"; then
-                BUILD_STATUS="finished"
-              elif echo "$BUILD_LIST_OUTPUT" | grep -q "$BUILD_ID.*error"; then
-                BUILD_STATUS="errored"
-              fi
-            fi
-            
-            if [ -z "$BUILD_STATUS" ]; then
-              echo "Build status not found, build might still be queued..."
-            elif [ "$BUILD_STATUS" = "finished" ]; then
+            if [ "$BUILD_STATUS" = "NOT_FOUND" ]; then
+              echo "Build $BUILD_ID not found in list, might still be queued..."
+            elif [ "$BUILD_STATUS" = "FINISHED" ]; then
               echo "Build completed! Submitting to App Store..."
               eas submit --platform ios --id $BUILD_ID --non-interactive
               exit 0
-            elif [ "$BUILD_STATUS" = "errored" ] || [ "$BUILD_STATUS" = "canceled" ]; then
+            elif [ "$BUILD_STATUS" = "ERRORED" ] || [ "$BUILD_STATUS" = "CANCELED" ]; then
               echo "Build failed with status: $BUILD_STATUS"
               exit 1
-            else
+            elif [ "$BUILD_STATUS" = "IN_QUEUE" ] || [ "$BUILD_STATUS" = "IN_PROGRESS" ]; then
               echo "Build status: $BUILD_STATUS. Waiting..."
+            else
+              echo "Unknown build status: $BUILD_STATUS"
             fi
             
             sleep 30

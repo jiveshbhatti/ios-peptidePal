@@ -29,7 +29,8 @@
     "production": {
       "ios": {
         "appleId": "jiveshbhatti@hotmail.com",
-        "appleTeamId": "23CR97Q98S"
+        "appleTeamId": "23CR97Q98S",
+        "ascAppId": "6670215134"
       }
     }
   }
