@@ -138,14 +138,18 @@ export function calculateUsedDosesFromLogs(
     }
   }
   
-  // Debug log for Glow
-  if (peptide.name === 'Glow') {
-    console.log(`Glow used doses calculation:`, {
+  // Debug log for specific peptides
+  if (peptide.name === 'Glow' || peptide.name === 'Retatrutide') {
+    console.log(`${peptide.name} used doses calculation:`, {
       vialId,
       totalDoseLogs: peptide.doseLogs.length,
       logsForThisVial: logsForVial,
       typicalDose,
-      totalUnitsUsed
+      totalUnitsUsed,
+      doseLogs: peptide.doseLogs.filter(log => log.vialId === vialId).map(log => ({
+        dose: log.dosage || (log as any).amount,
+        units: Math.ceil((log.dosage || (log as any).amount || 0) / typicalDose)
+      }))
     });
   }
   
@@ -248,13 +252,19 @@ export function getDrawVolumeForPeptide(
       }
     }
     
-    const doseMcg = peptide.typicalDosageUnits || 0;
+    // For Retatrutide, typical dose is in mg, need to convert to mcg
+    let doseMcg = peptide.typicalDosageUnits || 0;
+    if (peptide.dosageUnit === 'mg') {
+      doseMcg = doseMcg * 1000; // Convert mg to mcg
+    }
+    
     const bacWaterMl = activeVial.reconstitutionBacWaterMl;
     
     const result = calculateDrawVolume(doseMcg, totalMcgInVial, bacWaterMl);
     if (peptide.name === 'Glow' || peptide.name === 'NAD+' || peptide.name === 'Retatrutide') {
       console.log(`Calculated volume for ${peptide.name}: ${result} units`);
       console.log(`  doseMcg: ${doseMcg}, totalMcgInVial: ${totalMcgInVial}, bacWaterMl: ${bacWaterMl}`);
+      console.log(`  dosageUnit: ${peptide.dosageUnit}, typicalDosageUnits: ${peptide.typicalDosageUnits}`);
     }
     return result;
   }
