@@ -62,46 +62,6 @@
           "color": "#008080",
           "sounds": []
         }
-      ],
-      [
-        "@config-plugins/react-native-siri-shortcut",
-        {
-          "siriShortcutsActivities": [
-            {
-              "title": "Log Morning Dose",
-              "phrase": "Log morning dose",
-              "isEligibleForSearch": true,
-              "isEligibleForPrediction": true,
-              "needsUserConfirmation": false,
-              "activityType": "com.jiveshbhatti.peptidepal.LogMorningDose",
-              "keywords": ["peptide", "dose", "morning", "log", "AM"],
-              "persistentIdentifier": "LogMorningDose",
-              "isEligibleForPublicIndexing": false
-            },
-            {
-              "title": "Log Evening Dose",
-              "phrase": "Log evening dose",
-              "isEligibleForSearch": true,
-              "isEligibleForPrediction": true,
-              "needsUserConfirmation": false,
-              "activityType": "com.jiveshbhatti.peptidepal.LogEveningDose",
-              "keywords": ["peptide", "dose", "evening", "log", "PM"],
-              "persistentIdentifier": "LogEveningDose",
-              "isEligibleForPublicIndexing": false
-            },
-            {
-              "title": "Check Remaining Doses",
-              "phrase": "How many doses left",
-              "isEligibleForSearch": true,
-              "isEligibleForPrediction": true,
-              "needsUserConfirmation": false,
-              "activityType": "com.jiveshbhatti.peptidepal.CheckRemainingDoses",
-              "keywords": ["peptide", "doses", "remaining", "check", "left"],
-              "persistentIdentifier": "CheckRemainingDoses",
-              "isEligibleForPublicIndexing": false
-            }
-          ]
-        }
       ]
     ],
     "owner": "jiveshbhatti",

@@ -1,13 +1,26 @@
 import { Platform } from 'react-native';
-import SiriShortcuts, { 
-  ShortcutOptions, 
-  PresentShortcutCallbackData,
-  Activity
-} from 'react-native-siri-shortcut';
+// Temporarily disabled - Siri Shortcuts require native module setup
+// import SiriShortcuts, { 
+//   ShortcutOptions, 
+//   PresentShortcutCallbackData,
+//   Activity
+// } from 'react-native-siri-shortcut';
 import firebaseService from './firebase-wrapper';
 import { calculateRemainingDoses } from '../utils/dose-calculations';
 import { Peptide } from '../types/peptide';
 import { AppHaptics } from '../utils/haptics';
+
+// Temporary types until we can properly integrate Siri
+type ShortcutOptions = any;
+type Activity = any;
+const SiriShortcuts = {
+  addListener: () => ({ remove: () => {} }),
+  getInitialShortcut: () => Promise.resolve(null),
+  donateShortcut: () => {},
+  presentShortcut: () => Promise.resolve({}),
+  getShortcuts: () => Promise.resolve([]),
+  clearAllShortcuts: () => Promise.resolve(),
+};
 
 type TimeOfDay = 'AM' | 'PM';
 

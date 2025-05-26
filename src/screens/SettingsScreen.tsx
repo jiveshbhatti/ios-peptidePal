@@ -293,8 +293,8 @@ export default function SettingsScreen() {
       
       {Platform.OS === 'ios' && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Siri Shortcuts</Text>
-          <Text style={styles.settingDescription}>Add voice commands to control PeptidePal with Siri</Text>
+          <Text style={styles.sectionTitle}>Siri Shortcuts (Coming Soon)</Text>
+          <Text style={styles.settingDescription}>Voice commands will be available in a future update</Text>
           
           <TouchableOpacity
             style={styles.settingButton}
