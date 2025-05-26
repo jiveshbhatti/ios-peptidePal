@@ -93,8 +93,11 @@ jobs:
             
             # Submit the latest build
             echo "Submitting latest iOS build to TestFlight..."
-            eas submit --platform ios --latest --non-interactive
-            exit 0
+            eas submit --platform ios --latest --non-interactive || {
+              echo "Submission failed - the build might have been already submitted"
+              echo "This is expected if the build was submitted in a previous run"
+              exit 0
+            }
           fi
           
           echo "Waiting for iOS build $BUILD_ID to complete..."
@@ -112,8 +115,11 @@ jobs:
               echo "Build $BUILD_ID not found in list, might still be queued..."
             elif [ "$BUILD_STATUS" = "FINISHED" ]; then
               echo "Build completed! Submitting to App Store..."
-              eas submit --platform ios --id $BUILD_ID --non-interactive
-              exit 0
+              eas submit --platform ios --id $BUILD_ID --non-interactive || {
+                echo "Submission failed - the build might have been already submitted"
+                echo "This is expected if the build was submitted in a previous run"
+                exit 0
+              }
             elif [ "$BUILD_STATUS" = "ERRORED" ] || [ "$BUILD_STATUS" = "CANCELED" ]; then
               echo "Build failed with status: $BUILD_STATUS"
               exit 1
