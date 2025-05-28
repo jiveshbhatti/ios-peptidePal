@@ -174,15 +174,19 @@ class FirebaseRealtimeService {
     const unsubscribe = onSnapshot(
       collection(firestoreDb, 'inventory_peptides'),
       async (snapshot) => {
-        const items = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          created_at: timestampToString(doc.data().created_at),
-          updated_at: timestampToString(doc.data().updated_at),
-          expiry_date: timestampToString(doc.data().expiry_date),
-          active_vial_reconstitution_date: timestampToString(doc.data().active_vial_reconstitution_date),
-          active_vial_expiry_date: timestampToString(doc.data().active_vial_expiry_date)
-        } as InventoryPeptide));
+        const items = snapshot.docs.map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            created_at: timestampToString(data.created_at),
+            updated_at: timestampToString(data.updated_at),
+            expiry_date: timestampToString(data.expiry_date),
+            active_vial_reconstitution_date: timestampToString(data.active_vial_reconstitution_date),
+            active_vial_expiry_date: timestampToString(data.active_vial_expiry_date),
+            active_vial_status: data.active_vial_status || 'NONE' // Ensure this field is included
+          } as InventoryPeptide;
+        });
         
         await saveToCache(CACHE_KEYS.INVENTORY_PEPTIDES, items);
         callback(items);

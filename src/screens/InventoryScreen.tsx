@@ -58,19 +58,32 @@ export default function InventoryScreen() {
 
   // Memoized sections for better performance
   const sections = useMemo(() => {
-    const activePeptides = filteredPeptides.filter(
-      (peptide) => peptide.active_vial_status === 'IN_USE'
-    );
+    // Instead of using active_vial_status, check the actual vial data
+    const activePeptides = filteredPeptides.filter((inventoryPeptide) => {
+      // Find the associated peptide to check vial status
+      const schedulePeptide = peptides.find(p => p.id === inventoryPeptide.id);
+      if (!schedulePeptide) return false;
+      
+      // Check if there's an active vial with remaining doses
+      const activeVial = schedulePeptide.vials?.find(v => v.isActive);
+      return activeVial && activeVial.remainingAmountUnits > 0;
+    });
     
-    const inactivePeptides = filteredPeptides.filter(
-      (peptide) => peptide.active_vial_status !== 'IN_USE'
-    );
+    const inactivePeptides = filteredPeptides.filter((inventoryPeptide) => {
+      // Find the associated peptide to check vial status
+      const schedulePeptide = peptides.find(p => p.id === inventoryPeptide.id);
+      if (!schedulePeptide) return true; // If no schedule peptide, it's inactive
+      
+      // Check if there's NO active vial with remaining doses
+      const activeVial = schedulePeptide.vials?.find(v => v.isActive);
+      return !activeVial || activeVial.remainingAmountUnits <= 0;
+    });
 
     return [
       { title: 'Active Peptides', data: activePeptides },
       { title: 'Inactive Stock', data: inactivePeptides },
     ].filter(section => section.data.length > 0);
-  }, [filteredPeptides]);
+  }, [filteredPeptides, peptides]);
 
   const handlePeptidePress = useCallback((peptide: InventoryPeptide) => {
     AppHaptics.buttonTap();

@@ -102,6 +102,7 @@ export default function DoseLogModal({
       amount: doseAmount,
       dosage: doseAmount, // Add dosage field to match DoseLog interface
       unit,
+      vialId: activeVial.id, // Track which vial this dose came from
     };
     
     // Only add notes if it has content

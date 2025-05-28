@@ -32,7 +32,9 @@ export default function InventoryPeptideCard({
   const imageUrl = null; // Would come from Peptide in real app
   
   // Calculate active vial percentage remaining
-  const isActiveVial = peptide.active_vial_status === 'IN_USE';
+  // Use actual vial data instead of active_vial_status field
+  const activeVial = schedulePeptide?.vials?.find(v => v.isActive);
+  const isActiveVial = !!(activeVial && activeVial.remainingAmountUnits > 0);
   const hasStock = peptide.num_vials > 0;
   const isLowStock = peptide.num_vials <= (peptide.low_stock_threshold || 2);
   

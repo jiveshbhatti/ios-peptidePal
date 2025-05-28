@@ -5,6 +5,8 @@ import firebaseRealtimeService from '@/services/firebase-realtime';
 import { inventoryService } from '@/services/inventory.service';
 import NotificationService from '@/services/NotificationService';
 import SiriShortcutsManager from '@/services/SiriShortcutsManager';
+import { syncActiveVialStatus } from '@/utils/sync-active-status';
+import { needsDoseLogMigration, migrateAllDoseLogs } from '@/utils/migrate-dose-logs';
 
 interface DataContextType {
   peptides: Peptide[];
@@ -91,6 +93,18 @@ export function DataProvider({ children }: { children: ReactNode }) {
       // Update Siri shortcuts with latest peptides data
       SiriShortcutsManager.updatePeptides(updatedPeptides);
       setLoading(false);
+      
+      // Check if dose logs need migration (one-time fix)
+      if (needsDoseLogMigration(updatedPeptides)) {
+        console.log('Dose logs need migration, starting migration...');
+        migrateAllDoseLogs(updatedPeptides).then(() => {
+          console.log('Dose log migration completed');
+          // Trigger a refresh to update the UI with migrated data
+          refreshData();
+        }).catch(error => {
+          console.error('Error migrating dose logs:', error);
+        });
+      }
     });
     unsubscribeFunctions.push(unsubscribePeptides);
     
@@ -125,6 +139,21 @@ export function DataProvider({ children }: { children: ReactNode }) {
       firebaseRealtimeService.cleanup();
     };
   }, []); // Run once on mount
+
+  // Sync active vial status when both peptides and inventory data are available
+  useEffect(() => {
+    if (peptides.length > 0 && inventoryPeptides.length > 0) {
+      console.log('Syncing active vial statuses...');
+      
+      // Run sync for each inventory peptide
+      inventoryPeptides.forEach(async (inventoryPeptide) => {
+        const peptide = peptides.find(p => p.id === inventoryPeptide.id);
+        if (peptide) {
+          await syncActiveVialStatus(peptide, inventoryPeptide);
+        }
+      });
+    }
+  }, [peptides, inventoryPeptides]);
 
   const refreshData = async () => {
     console.log('Manual data refresh requested');
