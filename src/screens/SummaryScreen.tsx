@@ -11,6 +11,31 @@ import { format } from 'date-fns';
 import { exportDoseHistoryAsCSV } from '@/utils/export-utils';
 import { Alert } from 'react-native';
 
+// Helper function to normalize day values to numbers
+const normalizeDaysOfWeek = (days: any[]): number[] => {
+  if (!days || !Array.isArray(days)) return [];
+  
+  const dayNameToIndex: Record<string, number> = {
+    'sunday': 0,
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+  };
+  
+  return days.map(day => {
+    if (typeof day === 'number') {
+      return day;
+    } else if (typeof day === 'string') {
+      const index = dayNameToIndex[day.toLowerCase()];
+      return index !== undefined ? index : -1;
+    }
+    return -1;
+  }).filter(day => day >= 0 && day <= 6);
+};
+
 // Helper function to get date range
 const getDateRange = (period: string): { start: Date; end: Date } => {
   const end = new Date();
@@ -99,7 +124,8 @@ export default function SummaryScreen() {
         if (peptide.schedule.frequency === 'daily') {
           daysPerWeek = 7;
         } else if (peptide.schedule.frequency === 'specific_days' && peptide.schedule.daysOfWeek) {
-          daysPerWeek = peptide.schedule.daysOfWeek.length;
+          const normalizedDays = normalizeDaysOfWeek(peptide.schedule.daysOfWeek);
+          daysPerWeek = normalizedDays.length;
         }
         
         // Calculate expected doses based on schedule
@@ -113,10 +139,11 @@ export default function SummaryScreen() {
             expectedDoses += remainingDays;
           } else if (peptide.schedule.daysOfWeek) {
             // Count how many scheduled days fall within the remaining days
+            const normalizedDays = normalizeDaysOfWeek(peptide.schedule.daysOfWeek);
             const startDayOfWeek = start.getDay();
             for (let i = 0; i < remainingDays; i++) {
               const checkDay = (startDayOfWeek + i) % 7;
-              if (peptide.schedule.daysOfWeek.includes(checkDay)) {
+              if (normalizedDays.includes(checkDay)) {
                 expectedDoses++;
               }
             }

@@ -14,10 +14,11 @@ import * as Icon from 'react-native-feather';
 import { theme } from '@/constants/theme';
 import { useData } from '@/contexts/DataContext';
 import { useDatabase } from '@/contexts/DatabaseContext';
-import { Peptide, Vial, DoseLog } from '@/types/peptide';
+import { Peptide, Vial, DoseLog, DAYS_OF_WEEK } from '@/types/peptide';
 import { RootStackParamList } from '@/navigation/RootNavigator';
 import VialHistoryCard from '@/components/VialHistoryCard';
 import EditVialModal from '@/components/EditVialModal';
+import { EditScheduleModal } from '@/components/EditScheduleModal';
 import DoseTrendChart from '@/components/DoseTrendChart';
 import RemainingDosesVisualization from '@/components/RemainingDosesVisualization';
 import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
@@ -28,6 +29,31 @@ import { firebaseCleanService } from '@/services/firebase-clean';
 
 type PeptideDetailsRouteProp = RouteProp<RootStackParamList, 'PeptideDetails'>;
 type PeptideDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'PeptideDetails'>;
+
+// Helper function to normalize day values to numbers
+const normalizeDaysOfWeek = (days: any[]): number[] => {
+  if (!days || !Array.isArray(days)) return [];
+  
+  const dayNameToIndex: Record<string, number> = {
+    'sunday': 0,
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+  };
+  
+  return days.map(day => {
+    if (typeof day === 'number') {
+      return day;
+    } else if (typeof day === 'string') {
+      const index = dayNameToIndex[day.toLowerCase()];
+      return index !== undefined ? index : -1;
+    }
+    return -1;
+  }).filter(day => day >= 0 && day <= 6);
+};
 
 export default function PeptideDetailsScreen() {
   const route = useRoute<PeptideDetailsRouteProp>();
@@ -40,6 +66,7 @@ export default function PeptideDetailsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [editingVial, setEditingVial] = useState<Vial | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   
   const peptide = peptides.find(p => p.id === peptideId);
   const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptideId);
@@ -131,8 +158,11 @@ export default function PeptideDetailsScreen() {
       
       if (peptide.schedule.frequency === 'daily') {
         expectedDoses += peptide.schedule.times.length;
-      } else if (peptide.schedule.frequency === 'specific_days' && peptide.schedule.daysOfWeek?.includes(dayOfWeek as any)) {
-        expectedDoses += peptide.schedule.times.length;
+      } else if (peptide.schedule.frequency === 'specific_days' && peptide.schedule.daysOfWeek) {
+        const normalizedDays = normalizeDaysOfWeek(peptide.schedule.daysOfWeek);
+        if (normalizedDays.includes(dayOfWeek)) {
+          expectedDoses += peptide.schedule.times.length;
+        }
       }
       
       currentDate.setDate(currentDate.getDate() + 1);
@@ -373,12 +403,14 @@ export default function PeptideDetailsScreen() {
                   remainingDoses={remainingDoses}
                 />
                 <View style={styles.vialInfo}>
-                  <View style={styles.vialInfoRow}>
-                    <Text style={styles.vialInfoLabel}>Started:</Text>
-                    <Text style={styles.vialInfoValue}>
-                      {format(parseISO(activeVial.dateAdded), 'MMM d, yyyy')}
-                    </Text>
-                  </View>
+                  {activeVial.dateAdded && (
+                    <View style={styles.vialInfoRow}>
+                      <Text style={styles.vialInfoLabel}>Started:</Text>
+                      <Text style={styles.vialInfoValue}>
+                        {format(parseISO(activeVial.dateAdded), 'MMM d, yyyy')}
+                      </Text>
+                    </View>
+                  )}
                   {activeVial.expirationDate && (
                     <View style={styles.vialInfoRow}>
                       <Text style={styles.vialInfoLabel}>Expires:</Text>
@@ -416,11 +448,41 @@ export default function PeptideDetailsScreen() {
 
             {/* Schedule */}
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Schedule</Text>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Schedule</Text>
+                <TouchableOpacity 
+                  onPress={() => {
+                    AppHaptics.selection();
+                    setShowScheduleModal(true);
+                  }}
+                  style={styles.editButton}
+                >
+                  <Icon.Edit3 stroke={theme.colors.primary} width={18} height={18} />
+                </TouchableOpacity>
+              </View>
               <View style={styles.scheduleInfo}>
                 <Text style={styles.scheduleText}>
                   {peptide.schedule.frequency === 'daily' ? 'Daily' : 'Specific Days'}
                 </Text>
+                {peptide.schedule.frequency === 'specific_days' && peptide.schedule.daysOfWeek && (
+                  <View style={styles.scheduleDays}>
+                    {normalizeDaysOfWeek(peptide.schedule.daysOfWeek)
+                      .sort((a, b) => a - b)
+                      .map((dayIndex, index) => {
+                        const dayInfo = DAYS_OF_WEEK.find(d => d.index === dayIndex);
+                        return (
+                          <Text key={index} style={styles.scheduleDayText}>
+                            {dayInfo ? dayInfo.name : dayIndex}
+                          </Text>
+                        );
+                      })
+                      .reduce((acc, curr, index) => [
+                        ...acc,
+                        index > 0 ? <Text key={`sep-${index}`} style={styles.scheduleDayText}>, </Text> : null,
+                        curr
+                      ].filter(Boolean), [])}
+                  </View>
+                )}
                 {peptide.schedule.times.map((time, index) => (
                   <View key={index} style={styles.scheduleTime}>
                     <Icon.Clock stroke={theme.colors.gray[500]} width={16} height={16} />
@@ -545,6 +607,16 @@ export default function PeptideDetailsScreen() {
         onSave={handleSaveVial}
         onRecalculate={handleRecalculateVial}
       />
+      
+      {/* Edit Schedule Modal */}
+      {peptide && (
+        <EditScheduleModal
+          visible={showScheduleModal}
+          onClose={() => setShowScheduleModal(false)}
+          peptide={peptide}
+          onUpdate={refreshData}
+        />
+      )}
     </ScrollView>
   );
 }
@@ -604,11 +676,19 @@ const styles = StyleSheet.create({
   section: {
     marginBottom: theme.spacing.xl,
   },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
+  },
   sectionTitle: {
     fontSize: theme.typography.fontSize.lg,
     fontWeight: '600',
     color: theme.colors.gray[800],
-    marginBottom: theme.spacing.md,
+  },
+  editButton: {
+    padding: theme.spacing.xs,
   },
   vialInfo: {
     marginTop: theme.spacing.md,
@@ -668,6 +748,16 @@ const styles = StyleSheet.create({
   scheduleTimeText: {
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.gray[600],
+  },
+  scheduleDays: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: theme.spacing.sm,
+  },
+  scheduleDayText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[700],
+    fontWeight: '500',
   },
   actionButton: {
     backgroundColor: theme.colors.primary,

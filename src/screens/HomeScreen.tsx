@@ -27,6 +27,31 @@ import SiriShortcutsManager from '@/services/SiriShortcutsManager';
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList, 'Main'>;
 
+// Helper function to normalize day values to numbers
+const normalizeDaysOfWeek = (days: any[]): number[] => {
+  if (!days || !Array.isArray(days)) return [];
+  
+  const dayNameToIndex: Record<string, number> = {
+    'sunday': 0,
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6,
+  };
+  
+  return days.map(day => {
+    if (typeof day === 'number') {
+      return day;
+    } else if (typeof day === 'string') {
+      const index = dayNameToIndex[day.toLowerCase()];
+      return index !== undefined ? index : -1;
+    }
+    return -1;
+  }).filter(day => day >= 0 && day <= 6);
+};
+
 export default function HomeScreen() {
   const navigation = useNavigation<HomeScreenNavigationProp>();
   const { peptides, inventoryPeptides, loading, refreshData } = useData();
@@ -65,14 +90,9 @@ export default function HomeScreen() {
       if (frequency === 'daily') {
         isScheduledToday = true;
       } else if (frequency === 'specific_days' && daysOfWeek) {
-        // Handle both string day names and numeric day indexes
-        if (typeof daysOfWeek[0] === 'number') {
-          // If daysOfWeek contains numbers (0-6), compare with the numeric day index
-          isScheduledToday = daysOfWeek.includes(dayOfWeek);
-        } else {
-          // If daysOfWeek contains strings ('monday', etc.), compare with the day name
-          isScheduledToday = daysOfWeek.includes(currentDay);
-        }
+        // Normalize daysOfWeek to ensure consistent numeric format
+        const normalizedDays = normalizeDaysOfWeek(daysOfWeek);
+        isScheduledToday = normalizedDays.includes(dayOfWeek);
       }
       
       console.log(`Peptide ${peptide.name}: frequency=${frequency}, isScheduledToday=${isScheduledToday}, daysOfWeek=${JSON.stringify(daysOfWeek)}, currentDay=${currentDay}, dayOfWeek=${dayOfWeek}`);
@@ -191,14 +211,9 @@ export default function HomeScreen() {
       if (frequency === 'daily') {
         isScheduledToday = true;
       } else if (frequency === 'specific_days' && daysOfWeek) {
-        // Handle both string day names and numeric day indexes
-        if (typeof daysOfWeek[0] === 'number') {
-          // If daysOfWeek contains numbers (0-6), compare with the numeric day index
-          isScheduledToday = daysOfWeek.includes(dayOfWeek);
-        } else {
-          // If daysOfWeek contains strings ('monday', etc.), compare with the day name
-          isScheduledToday = daysOfWeek.includes(currentDay);
-        }
+        // Normalize daysOfWeek to ensure consistent numeric format
+        const normalizedDays = normalizeDaysOfWeek(daysOfWeek);
+        isScheduledToday = normalizedDays.includes(dayOfWeek);
       }
 
       if (isScheduledToday && times) {
