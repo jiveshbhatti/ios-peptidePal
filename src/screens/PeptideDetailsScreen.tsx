@@ -19,8 +19,10 @@ import { RootStackParamList } from '@/navigation/RootNavigator';
 import VialHistoryCard from '@/components/VialHistoryCard';
 import EditVialModal from '@/components/EditVialModal';
 import { EditScheduleModal } from '@/components/EditScheduleModal';
+import CompleteVialModal from '@/components/CompleteVialModal';
 import DoseTrendChart from '@/components/DoseTrendChart';
 import RemainingDosesVisualization from '@/components/RemainingDosesVisualization';
+import { VialCompletionType } from '@/types/vial-completion';
 import { format, parseISO, differenceInDays, startOfWeek, endOfWeek, isWithinInterval } from 'date-fns';
 import { inventoryService } from '@/services/inventory.service';
 import { AppHaptics } from '@/utils/haptics';
@@ -67,6 +69,9 @@ export default function PeptideDetailsScreen() {
   const [editingVial, setEditingVial] = useState<Vial | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [completingVial, setCompletingVial] = useState<Vial | null>(null);
+  const [completingVialRemaining, setCompletingVialRemaining] = useState<number>(0);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
   
   const peptide = peptides.find(p => p.id === peptideId);
   const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptideId);
@@ -324,6 +329,34 @@ export default function PeptideDetailsScreen() {
       AppHaptics.error();
     }
   }, [peptideId, refreshData]);
+  
+  const handleOpenCompleteModal = useCallback((vial: Vial, remainingDoses: number) => {
+    setCompletingVial(vial);
+    setCompletingVialRemaining(remainingDoses);
+    setShowCompleteModal(true);
+  }, []);
+  
+  const handleCompleteVial = useCallback(async (type: VialCompletionType, reason?: string) => {
+    if (!completingVial) return;
+    
+    try {
+      await firebaseCleanService.completeVial(
+        peptideId, 
+        completingVial.id, 
+        type, 
+        completingVialRemaining,
+        reason
+      );
+      await refreshData();
+      setShowCompleteModal(false);
+      setCompletingVial(null);
+      AppHaptics.success();
+      Alert.alert('Success', 'Vial has been completed');
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to complete vial');
+      AppHaptics.error();
+    }
+  }, [peptideId, completingVial, completingVialRemaining, refreshData]);
 
   const handleRecalculateVial = useCallback(async (vialId: string, newTotalMcg: number, newBacWaterMl: number) => {
     if (!peptide) return;
@@ -554,6 +587,7 @@ export default function PeptideDetailsScreen() {
                     onDelete={handleDeleteVial}
                     onDiscard={handleDiscardVial}
                     onSetAsCurrent={handleSetVialAsCurrent}
+                    onComplete={handleOpenCompleteModal}
                   />
                 ))
             ) : (
@@ -617,6 +651,18 @@ export default function PeptideDetailsScreen() {
           onUpdate={refreshData}
         />
       )}
+      
+      {/* Complete Vial Modal */}
+      <CompleteVialModal
+        visible={showCompleteModal}
+        vial={completingVial}
+        remainingDoses={completingVialRemaining}
+        onClose={() => {
+          setShowCompleteModal(false);
+          setCompletingVial(null);
+        }}
+        onComplete={handleCompleteVial}
+      />
     </ScrollView>
   );
 }

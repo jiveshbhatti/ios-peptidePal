@@ -10,6 +10,7 @@ import * as Icon from 'react-native-feather';
 import { format } from 'date-fns';
 import { exportDoseHistoryAsCSV } from '@/utils/export-utils';
 import { Alert } from 'react-native';
+import { calculateRemainingDoses } from '@/utils/dose-calculations';
 
 // Helper function to normalize day values to numbers
 const normalizeDaysOfWeek = (days: any[]): number[] => {
@@ -62,7 +63,7 @@ const getDateRange = (period: string): { start: Date; end: Date } => {
 };
 
 export default function SummaryScreen() {
-  const { peptides, refreshData, loading } = useData();
+  const { peptides, inventoryPeptides, refreshData, loading } = useData();
   const [timePeriod, setTimePeriod] = useState<string>('week');
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<'summary' | 'detailed'>('summary');
@@ -159,18 +160,23 @@ export default function SummaryScreen() {
       
       // Get active vial status
       const activeVial = peptide.vials?.find(v => v.isActive);
+      const inventoryPeptide = inventoryPeptides.find(ip => ip.id === peptide.id);
+      const remainingDoses = calculateRemainingDoses(peptide, inventoryPeptide);
+      
       let vialStatus = 'No Active Vial';
       let remainingPercentage = 0;
       
       if (activeVial) {
-        if (activeVial.remainingAmountUnits <= 0) {
+        if (remainingDoses <= 0) {
           vialStatus = 'Empty';
         } else if (activeVial.expirationDate && new Date(activeVial.expirationDate) < new Date()) {
           vialStatus = 'Expired';
         } else {
           vialStatus = 'Active';
           // Calculate percentage remaining
-          remainingPercentage = activeVial.remainingAmountUnits / activeVial.initialAmountUnits * 100;
+          remainingPercentage = activeVial.initialAmountUnits > 0 
+            ? (remainingDoses / activeVial.initialAmountUnits) * 100 
+            : 0;
         }
       }
       

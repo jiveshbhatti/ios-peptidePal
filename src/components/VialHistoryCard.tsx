@@ -5,6 +5,8 @@ import { theme } from '@/constants/theme';
 import { Vial } from '@/types/peptide';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { AppHaptics } from '@/utils/haptics';
+import { calculateUsedDosesFromLogs } from '@/utils/dose-calculations';
+import { useData } from '@/contexts/DataContext';
 
 interface VialHistoryCardProps {
   vial: Vial;
@@ -13,13 +15,22 @@ interface VialHistoryCardProps {
   onDelete?: (vialId: string) => void;
   onDiscard?: (vialId: string, reason: string) => void;
   onSetAsCurrent?: (vialId: string) => void;
+  onComplete?: (vial: Vial, remainingDoses: number) => void;
 }
 
-export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onDiscard, onSetAsCurrent }: VialHistoryCardProps) {
+export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onDiscard, onSetAsCurrent, onComplete }: VialHistoryCardProps) {
+  const { peptides } = useData();
+  const peptide = peptides.find(p => p.id === peptideId);
+  
+  // Calculate used doses from logs instead of using vial properties
+  const usedDoses = peptide ? calculateUsedDosesFromLogs(peptide, vial.id) : 0;
+  const remainingDoses = Math.max(0, vial.initialAmountUnits - usedDoses);
+  
   const isExpired = vial.expirationDate ? new Date(vial.expirationDate) < new Date() : false;
-  const isEmpty = vial.remainingAmountUnits <= 0;
-  const usagePercentage = ((vial.initialAmountUnits - vial.remainingAmountUnits) / vial.initialAmountUnits) * 100;
+  const isEmpty = remainingDoses <= 0;
+  const usagePercentage = vial.initialAmountUnits > 0 ? (usedDoses / vial.initialAmountUnits) * 100 : 0;
   const isDiscarded = vial.discardedAt || vial.discardReason;
+  const isCompleted = vial.completion !== undefined;
   const isCurrent = vial.isCurrent || vial.isActive; // Support both for backward compatibility
   // A vial is reconstituted if: it has the flag, is active, has been used, or has a reconstitution date
   const hasBeenUsed = vial.initialAmountUnits > vial.remainingAmountUnits;
@@ -39,6 +50,7 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
   };
 
   const getStatusColor = () => {
+    if (isCompleted) return theme.colors.gray[600];
     if (isDiscarded) return theme.colors.gray[400];
     if (isExpired) return theme.colors.error;
     if (isExpiringSoon) return theme.colors.warning || '#F59E0B';
@@ -49,6 +61,7 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
   };
 
   const getStatusText = () => {
+    if (isCompleted) return 'Completed';
     if (isDiscarded) return 'Discarded';
     if (isExpired) return 'Expired';
     if (isExpiringSoon) return `Expires in ${daysUntilExpiry} days`;
@@ -59,6 +72,7 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
   };
 
   const getStatusIcon = () => {
+    if (isCompleted) return <Icon.CheckSquare stroke={getStatusColor()} width={16} height={16} />;
     if (isDiscarded) return <Icon.XCircle stroke={getStatusColor()} width={16} height={16} />;
     if (isExpired) return <Icon.AlertCircle stroke={getStatusColor()} width={16} height={16} />;
     if (isExpiringSoon) return <Icon.AlertTriangle stroke={getStatusColor()} width={16} height={16} />;
@@ -158,6 +172,13 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
       ]
     );
   };
+  
+  const handleComplete = () => {
+    AppHaptics.buttonTap();
+    if (onComplete) {
+      onComplete(vial, remainingDoses);
+    }
+  };
 
   return (
     <View style={[
@@ -176,15 +197,20 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
           </View>
         </View>
         <View style={styles.headerActions}>
-          {!isDiscarded && (
+          {!isDiscarded && !isCompleted && (
             <>
               <TouchableOpacity onPress={handleEdit} style={styles.actionButton}>
                 <Icon.Edit3 stroke={theme.colors.gray[600]} width={18} height={18} />
               </TouchableOpacity>
               {vial.isActive ? (
-                <TouchableOpacity onPress={handleDiscard} style={styles.actionButton}>
-                  <Icon.XCircle stroke={theme.colors.warning || '#F59E0B'} width={18} height={18} />
-                </TouchableOpacity>
+                <>
+                  <TouchableOpacity onPress={handleComplete} style={styles.actionButton}>
+                    <Icon.CheckSquare stroke={theme.colors.primary} width={18} height={18} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleDiscard} style={styles.actionButton}>
+                    <Icon.XCircle stroke={theme.colors.warning || '#F59E0B'} width={18} height={18} />
+                  </TouchableOpacity>
+                </>
               ) : (
                 <TouchableOpacity onPress={handleDelete} style={styles.actionButton}>
                   <Icon.Trash2 stroke={theme.colors.error} width={18} height={18} />
@@ -226,7 +252,7 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
           <View style={styles.progressHeader}>
             <Text style={styles.label}>Usage:</Text>
             <Text style={styles.value}>
-              {vial.initialAmountUnits - vial.remainingAmountUnits} / {vial.initialAmountUnits} doses
+              {usedDoses} / {vial.initialAmountUnits} doses
             </Text>
           </View>
           <View style={styles.progressBarContainer}>
@@ -245,6 +271,23 @@ export default function VialHistoryCard({ vial, peptideId, onEdit, onDelete, onD
           <View style={styles.discardSection}>
             <Text style={styles.discardLabel}>Discard Reason:</Text>
             <Text style={styles.discardText}>{vial.discardReason}</Text>
+          </View>
+        )}
+        
+        {isCompleted && vial.completion && (
+          <View style={styles.completionSection}>
+            <Text style={styles.completionLabel}>Completion Details:</Text>
+            <Text style={styles.completionText}>
+              Type: {vial.completion.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+            </Text>
+            {vial.completion.wastedDoses > 0 && (
+              <Text style={styles.wastedText}>
+                Doses Wasted: {vial.completion.wastedDoses}
+              </Text>
+            )}
+            {vial.completion.reason && (
+              <Text style={styles.completionText}>Reason: {vial.completion.reason}</Text>
+            )}
           </View>
         )}
         
@@ -390,6 +433,29 @@ const styles = StyleSheet.create({
     fontSize: theme.typography.fontSize.sm,
     color: theme.colors.error,
     lineHeight: 20,
+  },
+  completionSection: {
+    marginTop: theme.spacing.sm,
+    paddingTop: theme.spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.gray[100],
+  },
+  completionLabel: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[600],
+    marginBottom: theme.spacing.xs,
+    fontWeight: '500',
+  },
+  completionText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.gray[700],
+    lineHeight: 20,
+  },
+  wastedText: {
+    fontSize: theme.typography.fontSize.sm,
+    color: theme.colors.warning || '#F59E0B',
+    lineHeight: 20,
+    fontWeight: '500',
   },
   setAsCurrentButton: {
     flexDirection: 'row',

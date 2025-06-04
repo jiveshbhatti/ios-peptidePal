@@ -720,6 +720,67 @@ const firebaseCleanService = {
       this._log('discardVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
       throw error;
     }
+  },
+  
+  async completeVial(peptideId, vialId, completionType, remainingDoses, reason) {
+    try {
+      if (DEBUG_FIREBASE) console.log(`[Firebase Clean] Completing vial ${vialId} for peptide ${peptideId}...`);
+      
+      const vialRef = doc(firestoreDbClean, COLLECTION.PEPTIDES, peptideId, SUBCOLLECTION.VIALS, vialId);
+      const vialSnap = await getDoc(vialRef);
+      
+      if (!vialSnap.exists()) {
+        throw new Error(`Vial ${vialId} not found`);
+      }
+      
+      const vialData = vialSnap.data();
+      const completedAt = new Date().toISOString();
+      const completionNote = `Completed on ${new Date(completedAt).toLocaleDateString()} - Type: ${completionType}${reason ? ` - ${reason}` : ''}`;
+      
+      // Calculate wasted doses (0 if fully used or transferred)
+      const wastedDoses = (completionType === 'fully_used' || completionType === 'transferred') ? 0 : remainingDoses;
+      
+      // Create completion data
+      const completion = {
+        type: completionType,
+        remainingDoses: remainingDoses,
+        wastedDoses: wastedDoses,
+        completedAt: completedAt,
+        ...(reason && { reason })
+      };
+      
+      // Update the vial to mark it as completed
+      await updateDoc(vialRef, {
+        isActive: false,
+        isCurrent: false,
+        completion: completion,
+        notes: vialData.notes ? `${vialData.notes} | ${completionNote}` : completionNote
+      });
+      
+      // Update inventory if this was the current vial
+      if (vialData.isCurrent || vialData.isActive) {
+        const inventoryRef = doc(firestoreDbClean, COLLECTION.INVENTORY_PEPTIDES, peptideId);
+        const inventorySnap = await getDoc(inventoryRef);
+        if (inventorySnap.exists()) {
+          const newStatus = completionType === 'fully_used' ? 'FINISHED' : 'NONE';
+          await updateDoc(inventoryRef, {
+            active_vial_status: newStatus,
+            active_vial_reconstitution_date: null,
+            active_vial_expiry_date: null,
+            updated_at: serverTimestamp()
+          });
+        }
+      }
+      
+      this._log('completeVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, true);
+      
+      // Return the updated peptide
+      return await this.getPeptideById(peptideId);
+    } catch (error) {
+      console.error(`[Firebase Clean] Error completing vial ${vialId}:`, error);
+      this._log('completeVial', `${COLLECTION.PEPTIDES}/${peptideId}/${SUBCOLLECTION.VIALS}/${vialId}`, false);
+      throw error;
+    }
   }
 };
 

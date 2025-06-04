@@ -40,6 +40,17 @@ export interface Vial {
   // Discard tracking
   discardedAt?: string; // ISO date string when vial was discarded
   discardReason?: string; // Reason for discarding (e.g., "Expired", "Contaminated", etc.)
+  
+  // Completion tracking
+  completion?: {
+    type: string; // VialCompletionType enum value
+    remainingDoses: number;
+    wastedDoses: number;
+    reason?: string;
+    completedAt: string;
+    transferredToVialId?: string;
+    costWasted?: number;
+  };
 }
 
 export interface DoseLog {
