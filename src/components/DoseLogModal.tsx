@@ -74,13 +74,8 @@ export default function DoseLogModal({
       return;
     }
     
-    if (isVialExpired) {
-      Alert.alert(
-        'Vial Expired', 
-        'The active vial has expired. Please activate a new vial from inventory'
-      );
-      return;
-    }
+    // Allow logging even for expired vials
+    // Users may need to log doses for expired vials in certain cases
 
     // Check if the amount exceeds remaining units, but only if units match
     // If the unit is the same as in vial tracking (which is typically in doses), compare directly
