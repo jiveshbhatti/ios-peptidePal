@@ -16,7 +16,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.jiveshbhatti.peptidepal",
-      "buildNumber": "42",
+      "buildNumber": "47",
       "config": {
         "usesNonExemptEncryption": false
       },
